@@ -57,6 +57,12 @@ test("d Balken verbinden: AA mit gemeinsamen Füßen bekommt ein Verbindungsstü
   expect(barLink(inst("H"), 0, a, 400, S)).toBeNull(); // H oben, A unten
 });
 
+test("d Balken verbinden: Grenze ist der Buchstabenabstand, nicht der Wortabstand", () => {
+  const a = inst("A");
+  expect(barLink(a, 0, a, a.p.w, { ...S, wordGap: 40 })).not.toBeNull(); // Füße treffen sich: Lücke 51,8 ≤ 56
+  expect(barLink(a, 0, a, a.p.w + 100, S)).toBeNull(); // Lücke 151,8 > 56
+});
+
 test("Kollision: Berührung erkannt, normaler Abstand frei", () => {
   const i = inst("I");
   expect(collides(i, 0, i, 30, S)).toBe(true);

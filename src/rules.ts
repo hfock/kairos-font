@@ -85,10 +85,10 @@ export function trimTop(f: Inst, fx: number, o: Inst, ox: number, s: Style): Ins
   return p.top === f.p.top ? f : instance(f.def, p, s);
 }
 
-/** Verbindungsstück zwischen zwei Querbalken auf gleicher Linie (globale Koordinaten), sonst null. */
+/** Verbindungsstück zwischen zwei Querbalken auf gleicher Linie (globale Koordinaten), wenn die Lücke zwischen den Tinten höchstens den Buchstabenabstand misst (Spec 5.4); sonst null. */
 export function barLink(l: Inst, lx: number, r: Inst, rx: number, s: Style): Stroke | null {
   const a = dock(l, "bar"), b = dock(r, "bar");
   if (!a || !b || !a.right || !b.left || Math.abs(a.y - b.y) > 0.5) return null;
   const x0 = lx + a.x1, x1 = rx + b.x0;
-  return x1 > x0 && x1 - x0 <= s.wordGap ? stroke(x0, a.y, L(x1, a.y)) : null;
+  return x1 > x0 && x1 - x0 - s.stroke <= s.gap + 1 ? stroke(x0, a.y, L(x1, a.y)) : null;
 }
