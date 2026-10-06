@@ -5,38 +5,14 @@ import { joinOptions, layoutLine, type Layout, type Pins, type Placed } from "./
 import type { Params } from "./glyphs";
 import { svgString, type Overlay } from "./render";
 import type { Join } from "./rules";
-import { FLAECHE_1902, type Style } from "./style";
+import { cleanPreset, cleanState, type Preset, type State } from "./presets";
+import { FLAECHE_1902 } from "./style";
 
-type OverlayRef = { src: string; x: number; y: number; w: number; h: number };
-type Preset = {
-  name: string;
-  text: string;
-  style: string;
-  styleValues?: Partial<Style>;
-  controls: { targetWidth: number | null; interlock: number };
-  variant: number;
-  pins: Pins;
-  overlay?: OverlayRef;
-};
-type State = {
-  text: string;
-  interlock: number;
-  target: number | null;
-  style: Style;
-  variant: number;
-  pins: Pins;
-  ink: string;
-  paper: string;
-  transparent: boolean;
-  overlay: OverlayRef | null;
-  showOverlay: boolean;
-  opacity: number;
-  selected: number | null;
-};
 type HandleKind = "h" | "w" | "bar" | "foot" | "top";
 
 const BUILTIN = [dieFlaeche, hagen] as unknown as Preset[];
 const OVERLAYS: Record<string, string> = { "die-flaeche": overlayUrl };
+const OVERLAY_KEYS: ReadonlySet<string> = new Set(Object.keys(OVERLAYS));
 const KEY = "kairos.state", PRESETS = "kairos.presets", SVGNS = "http://www.w3.org/2000/svg";
 const LABEL: Record<string, string> = {
   none: "keine",
@@ -48,30 +24,6 @@ const LABEL: Record<string, string> = {
 };
 
 const $ = <T extends HTMLElement = HTMLInputElement>(id: string) => document.getElementById(id) as T;
-const JOIN_TYPES = new Set(["none", "nest", "underrun", "share"]), JOIN_SUBS = new Set(["term", "stem", "leg"]);
-const isNum = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
-
-/** Pins aus Vorlage oder Speicher prüfen: nur endliche Zahlen und bekannte Verbindungen, sonst null. */
-function cleanPins(raw: unknown): Pins | null {
-  const p = raw as Pins | null;
-  if (!p || typeof p.letters !== "object" || typeof p.joins !== "object" || !p.letters || !p.joins) return null;
-  for (const ps of Object.values(p.letters)) if (!ps || typeof ps !== "object" || !Object.values(ps).every(isNum)) return null;
-  for (const j of Object.values(p.joins)) {
-    if (!j || !JOIN_TYPES.has(j.type) || (j.sub !== undefined && !JOIN_SUBS.has(j.sub)) || (j.bar !== undefined && typeof j.bar !== "boolean")) return null;
-  }
-  return p;
-}
-
-/** Ganze Vorlage prüfen (Import und Speicher); Text wird NFC-normalisiert, damit Pin-Indizes passen. */
-function cleanPreset(raw: unknown): Preset | null {
-  const p = raw as Preset | null;
-  if (!p || typeof p.name !== "string" || typeof p.text !== "string" || !isNum(p.controls?.interlock)) return null;
-  if (p.controls.targetWidth !== null && !isNum(p.controls.targetWidth)) return null;
-  if (p.styleValues && !Object.values(p.styleValues).every(isNum)) return null;
-  if (p.overlay && !(OVERLAYS[p.overlay.src] && [p.overlay.x, p.overlay.y, p.overlay.w, p.overlay.h].every(isNum))) return null;
-  const pins = cleanPins(p.pins);
-  return pins ? { ...p, text: p.text.normalize("NFC"), variant: isNum(p.variant) ? p.variant : 0, pins } : null;
-}
 const jkey = (j: Join) => j.sub ?? j.type;
 
 function load<T>(key: string, fallback: T): T {
@@ -106,10 +58,12 @@ const fromPreset = (p: Preset, keep?: State): State => ({
   selected: null,
 });
 
-let state: State = load(KEY, fromPreset(BUILTIN[0]));
-const styleOk = (s: Style | undefined) => !!s && Object.entries(s).every(([k, v]) => (k === "id" ? typeof v === "string" : isNum(v)));
-if (typeof state.text !== "string" || !styleOk(state.style) || !cleanPins(state.pins)) state = fromPreset(BUILTIN[0]);
-let userPresets: Preset[] = load<unknown[]>(PRESETS, []).map(cleanPreset).filter((p): p is Preset => p !== null);
+// Browser-Speicher ist eine Vertrauensgrenze: Kaputtes führt zum Standard statt zum Absturz
+let state: State = cleanState(load<unknown>(KEY, null), OVERLAY_KEYS) ?? fromPreset(BUILTIN[0]);
+const storedPresets = load<unknown>(PRESETS, []);
+let userPresets: Preset[] = (Array.isArray(storedPresets) ? storedPresets : [])
+  .map((p) => cleanPreset(p, OVERLAY_KEYS))
+  .filter((p): p is Preset => p !== null);
 let variants: Layout[] = [];
 let layout: Layout | null = null;
 
@@ -130,8 +84,8 @@ function restore(from: string[], to: string[]) {
   to.push(stable);
   state = JSON.parse(v);
   stable = v;
-  syncControls();
   update();
+  syncControls();
 }
 
 function update() {
@@ -181,14 +135,14 @@ function renderPreview() {
 
 /** Griffe in Buchstabenkoordinaten: Höhe, Breite, Balken, Fuß, oberer Arm. */
 function handles(g: Placed): { kind: HandleKind; x: number; y: number }[] {
-  const s = state.style, p = g.inst.p, { minX, maxX } = g.inst.prof, top = s.capHeight * p.h;
+  const s = state.style, p = g.inst.p, has = g.inst.def.params, { minX, maxX } = g.inst.prof, top = s.capHeight * p.h;
   const out: { kind: HandleKind; x: number; y: number }[] = [{ kind: "h", x: (minX + maxX) / 2, y: top }];
-  if ("w" in p) out.push({ kind: "w", x: maxX, y: top / 2 });
+  if (has.w) out.push({ kind: "w", x: maxX, y: top / 2 });
   for (const d of g.inst.docks) {
-    if (d.kind === "bar" && "bar" in p) out.push({ kind: "bar", x: (d.x0 + d.x1) / 2, y: d.y });
-    if (d.kind === "foot") out.push({ kind: "foot", x: d.end, y: s.stroke / 2 });
+    if (d.kind === "bar" && has.bar) out.push({ kind: "bar", x: (d.x0 + d.x1) / 2, y: d.y });
+    if (d.kind === "foot" && has.foot) out.push({ kind: "foot", x: d.end, y: s.stroke / 2 });
   }
-  if ("top" in p) out.push({ kind: "top", x: p.w + p.top, y: top - s.stroke / 2 });
+  if (has.top) out.push({ kind: "top", x: p.w + p.top, y: top - s.stroke / 2 });
   return out;
 }
 
@@ -221,10 +175,12 @@ function drag(e: PointerEvent, start: Placed, kind: HandleKind) {
   const up = () => {
     removeEventListener("pointermove", move);
     removeEventListener("pointerup", up);
+    removeEventListener("pointercancel", up);
     commit();
   };
   addEventListener("pointermove", move);
   addEventListener("pointerup", up);
+  addEventListener("pointercancel", up);
 }
 
 function renderLetter() {
@@ -250,7 +206,10 @@ function joinSelect(sel: HTMLSelectElement, boundary: number) {
   sel.value = pin ? jkey(pin) : "auto";
   sel.onchange = () => {
     if (sel.value === "auto") delete state.pins.joins[boundary];
-    else state.pins.joins[boundary] = { ...opts.find((j) => jkey(j) === sel.value)!, bar: state.pins.joins[boundary]?.bar ?? false };
+    else {
+      const autoBar = !!auto && jkey(auto) === sel.value && !!auto.bar; // gleiche Verbindung wie automatisch: Balken behalten
+      state.pins.joins[boundary] = { ...opts.find((j) => jkey(j) === sel.value)!, bar: state.pins.joins[boundary]?.bar ?? autoBar };
+    }
     update();
     commit();
   };
@@ -290,6 +249,7 @@ function syncControls() {
 // --- Bedienung -------------------------------------------------------------
 
 $("preview").addEventListener("click", (e) => {
+  if ((e.target as Element).closest(".handle")) return; // Griff: Auswahl bleibt
   const hit = (e.target as Element).closest("[data-i]");
   state.selected = hit ? Number(hit.getAttribute("data-i")) : null;
   renderPreview();
@@ -304,8 +264,8 @@ $("text").addEventListener("input", () => {
   state.variant = 0;
   state.overlay = null;
   state.showOverlay = false;
-  syncControls();
   update();
+  syncControls();
   commit();
 });
 
@@ -375,7 +335,7 @@ addEventListener("keydown", (e) => {
     else restore(past, future);
     return;
   }
-  if (document.activeElement === $("text")) return;
+  if ((e.target as Element).closest?.("input, select, textarea")) return; // Regler und Felder behalten ihre Pfeiltasten
   const step = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
   if (step && variants[state.variant + step]) {
     state.variant += step;
@@ -394,8 +354,8 @@ function renderPresets() {
 }
 function usePreset(p: Preset) {
   state = fromPreset(p, state);
-  syncControls();
   update();
+  syncControls();
   commit();
 }
 const toPreset = (name: string): Preset => ({
@@ -427,7 +387,7 @@ $("importPreset").addEventListener("change", async () => {
   const input = $("importPreset"), file = input.files?.[0];
   if (!file) return;
   try {
-    const p = cleanPreset(JSON.parse(await file.text()));
+    const p = cleanPreset(JSON.parse(await file.text()), OVERLAY_KEYS);
     if (!p) throw new Error("Format");
     userPresets = [...userPresets.filter((q) => q.name !== p.name), p];
     save(PRESETS, userPresets);
@@ -461,15 +421,21 @@ $("exportSvg").addEventListener("click", () => {
 $("exportPng").addEventListener("click", async () => {
   const t = exportSvg();
   if (!t) return;
-  const img = new Image();
-  img.src = URL.createObjectURL(new Blob([t], { type: "image/svg+xml" }));
-  await img.decode();
-  const scale = Number($<HTMLSelectElement>("pngScale").value), c = document.createElement("canvas");
-  c.width = Math.round(img.naturalWidth * scale);
-  c.height = Math.round(img.naturalHeight * scale);
-  c.getContext("2d")!.drawImage(img, 0, 0, c.width, c.height);
-  URL.revokeObjectURL(img.src);
-  c.toBlob((b) => b && download(`${slug(state.text)}.png`, b), "image/png");
+  const url = URL.createObjectURL(new Blob([t], { type: "image/svg+xml" }));
+  try {
+    const img = new Image();
+    img.src = url;
+    await img.decode();
+    const scale = Number($<HTMLSelectElement>("pngScale").value), c = document.createElement("canvas");
+    c.width = Math.round(img.naturalWidth * scale);
+    c.height = Math.round(img.naturalHeight * scale);
+    c.getContext("2d")!.drawImage(img, 0, 0, c.width, c.height);
+    c.toBlob((b) => (b ? download(`${slug(state.text)}.png`, b) : ($("status").textContent = "PNG-Export fehlgeschlagen")), "image/png");
+  } catch {
+    $("status").textContent = "PNG-Export fehlgeschlagen";
+  } finally {
+    URL.revokeObjectURL(url);
+  }
 });
 
 renderPresets();
