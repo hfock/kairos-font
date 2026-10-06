@@ -23,6 +23,9 @@ test("cleanPreset: gültige Vorlage bleibt, Text wird NFC, Kaputtes wird abgeleh
   expect(cleanPreset({ ...dieFlaeche, variant: 1.5 }, KNOWN)?.variant).toBe(0);
   expect(cleanPreset({ ...dieFlaeche, overlay: { ...dieFlaeche.overlay, src: "toString" } }, KNOWN)).toBeNull();
   expect(cleanPreset({ ...dieFlaeche, controls: { targetWidth: "breit", interlock: 0.5 } }, KNOWN)).toBeNull();
+  expect(cleanPreset({ ...dieFlaeche, styleValues: { stroke: 30, wordGap: 120 } }, KNOWN)).not.toBeNull();
+  expect(cleanPreset({ ...dieFlaeche, styleValues: { stroke: 1e7 } }, KNOWN)).toBeNull(); // würde die Seite einfrieren
+  expect(cleanPreset({ ...dieFlaeche, styleValues: { capHeight: 900 } }, KNOWN)).toBeNull(); // kein Regler
   for (const bad of [null, 5, "x", [], {}]) expect(cleanPreset(bad, KNOWN)).toBeNull();
 });
 
@@ -31,5 +34,8 @@ test("cleanState: gültiger Stand bleibt, kaputter Speicher führt zum Standard 
   expect(cleanState({ ...valid, ink: '"/><script>' }, KNOWN)).toBeNull();
   expect(cleanState({ ...valid, overlay: { src: "constructor", x: 0, y: 0, w: 1, h: 1 } }, KNOWN)).toBeNull();
   expect(cleanState({ ...valid, style: { ...FLAECHE_1902, capHeight: "700" } }, KNOWN)).toBeNull();
+  expect(cleanState({ ...valid, style: { ...FLAECHE_1902, stroke: 30 } }, KNOWN)).not.toBeNull();
+  expect(cleanState({ ...valid, style: { ...FLAECHE_1902, stroke: 1e7 } }, KNOWN)).toBeNull();
+  expect(cleanState({ ...valid, style: { ...FLAECHE_1902, capHeight: 1e9 } }, KNOWN)).toBeNull();
   for (const bad of [null, 5, "x", [], {}, { text: "DIE" }]) expect(cleanState(bad, KNOWN)).toBeNull();
 });

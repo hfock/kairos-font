@@ -33,6 +33,9 @@ const JOIN_TYPES = new Set(["none", "nest", "underrun", "share"]), JOIN_SUBS = n
 const isNum = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
 const isColor = (v: unknown) => typeof v === "string" && /^#[0-9a-f]{6}$/i.test(v);
+/** Nur die Feinheiten-Regler dürfen Stilwerte ändern – und nur in ihrem Spielraum (wie in index.html); riesige Werte würden die Seite einfrieren. */
+const STYLE_RANGES: Record<string, [number, number]> = { stroke: [14, 44], barHigh: [420, 640], barLow: [60, 280], wordGap: [40, 400] };
+const inStyleRange = (k: string, v: unknown) => isNum(v) && v >= STYLE_RANGES[k][0] && v <= STYLE_RANGES[k][1];
 const overlayOk = (o: unknown, known: ReadonlySet<string>) =>
   isObj(o) && typeof o.src === "string" && known.has(o.src) && [o.x, o.y, o.w, o.h].every(isNum);
 
@@ -53,7 +56,8 @@ export function cleanPreset(raw: unknown, known: ReadonlySet<string>): Preset | 
   if (!isObj(raw) || typeof raw.name !== "string" || typeof raw.text !== "string" || typeof raw.style !== "string") return null;
   const c = raw.controls;
   if (!isObj(c) || !isNum(c.interlock) || (c.targetWidth !== null && !isNum(c.targetWidth))) return null;
-  if (raw.styleValues !== undefined && !(isObj(raw.styleValues) && Object.values(raw.styleValues).every(isNum))) return null;
+  const sv = raw.styleValues;
+  if (sv !== undefined && !(isObj(sv) && Object.entries(sv).every(([k, v]) => k in STYLE_RANGES && inStyleRange(k, v)))) return null;
   if (raw.overlay !== undefined && !overlayOk(raw.overlay, known)) return null;
   const pins = cleanPins(raw.pins);
   if (!pins) return null;
@@ -65,7 +69,10 @@ export function cleanPreset(raw: unknown, known: ReadonlySet<string>): Preset | 
 export function cleanState(raw: unknown, known: ReadonlySet<string>): State | null {
   if (!isObj(raw) || typeof raw.text !== "string" || !cleanPins(raw.pins)) return null;
   const st = raw.style;
-  const styleOk = isObj(st) && Object.keys(FLAECHE_1902).every((k) => (k === "id" ? typeof st.id === "string" : isNum(st[k])));
+  const base = FLAECHE_1902 as unknown as Record<string, unknown>;
+  const styleOk =
+    isObj(st) &&
+    Object.keys(base).every((k) => (k === "id" ? typeof st.id === "string" : k in STYLE_RANGES ? inStyleRange(k, st[k]) : st[k] === base[k]));
   const ok =
     styleOk &&
     isColor(raw.ink) &&
