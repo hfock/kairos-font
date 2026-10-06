@@ -31,10 +31,11 @@ test("profile + gapOffset: zwei Stämme stehen mit genau gap Lichtweite", () => 
 });
 
 test("gapOffset: minY blendet untere Streifen aus", () => {
-  const foot = profile(inkPoints(stroke(0, 13, L(300, 13)), 13), 700); // nur unten Tinte
   const stem = profile(inkPoints(stroke(0, 0, L(0, 700)), 13), 700);
-  expect(gapOffset(foot, stem, 50, 100)).toBeCloseTo(50 - (-13 - 300)); // keine gemeinsamen Streifen → Rahmen
-  expect(gapOffset(foot, stem, 50)).toBeCloseTo(50 + 300 + 13);
+  const foot = profile(inkPoints(stroke(0, 13, L(300, 13)), 13), 700);
+  const lShape = mergeProfiles([{ prof: stem, x: 0 }, { prof: foot, x: 0 }]); // L: Stamm + Fuß
+  expect(gapOffset(lShape, stem, 50)).toBeCloseTo(50 + 300 + 13); // unten bestimmt der Fuß den Abstand
+  expect(gapOffset(lShape, stem, 50, 100)).toBeCloseTo(50 + 13 + 13); // über dem Fuß zählt nur der Stamm
 });
 
 test("mergeProfiles verschiebt Teile korrekt", () => {
