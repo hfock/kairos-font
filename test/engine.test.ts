@@ -63,6 +63,14 @@ test("e Zielbreite: erreichbar → passt auf ±2, unerreichbar → Hinweis", () 
   expect(far.warnings).toContain("Zielbreite nicht erreichbar – nächstbeste Breite gezeigt");
 });
 
+test("e Zielbreite bricht keine gepinnte Verbindung", () => {
+  const pins = { letters: {}, joins: { 6: { type: "share" as const, sub: "leg" as const, bar: true } } };
+  const natural = layoutLine("HAGEN AAD FOCK", opts({ pins })).variants[0].width;
+  const r = layoutLine("HAGEN AAD FOCK", opts({ pins, targetWidth: natural * 1.3 }));
+  for (const v of r.variants) expect(kinds(v)[6]).toBe("leg+bar");
+  expect(r.warnings).toContain("Zielbreite nicht erreichbar – nächstbeste Breite gezeigt");
+});
+
 test("joinOptions: Wortgrenze hat keine Optionen", () => {
   const v = layoutLine("DIE FLÄCHE", opts()).variants[0];
   expect(joinOptions(v, 2)).toEqual([]); // E | Leerzeichen

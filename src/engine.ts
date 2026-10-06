@@ -177,7 +177,10 @@ function fitWidth(v: Layout, ws: Letter[][], o: Options, warn: Set<string>): Lay
     const letters = { ...o.pins.letters };
     flex.forEach((g, i) => (letters[g.index] = { ...letters[g.index], w: g.inst.p.w + ratio * room[i] }));
     const pins: Pins = { letters, joins: { ...cur.joins, ...o.pins.joins } };
-    cur = assemble(ws.map((w) => searchWord(w, { ...o, pins }, new Set())[0]), v.score, o.style);
+    const lost = new Set<string>();
+    const next = assemble(ws.map((w) => searchWord(w, { ...o, pins }, lost)[0]), v.score, o.style);
+    if (lost.size) break; // breitere Buchstaben würden eine Verbindung oder einen Pin brechen: beim letzten Stand bleiben
+    cur = next;
   }
   if (Math.abs(target - cur.width) > 2) warn.add("Zielbreite nicht erreichbar – nächstbeste Breite gezeigt");
   return cur;
