@@ -63,12 +63,46 @@ test("e Zielbreite: erreichbar → passt auf ±2, unerreichbar → Hinweis", () 
   expect(far.warnings).toContain("Zielbreite nicht erreichbar – nächstbeste Breite gezeigt");
 });
 
-test("e Zielbreite bricht keine gepinnte Verbindung", () => {
+test("e Zielbreite hält eine gepinnte Verbindung und kommt trotzdem voran", () => {
   const pins = { letters: {}, joins: { 6: { type: "share" as const, sub: "leg" as const, bar: true } } };
   const natural = layoutLine("HAGEN AAD FOCK", opts({ pins })).variants[0].width;
   const r = layoutLine("HAGEN AAD FOCK", opts({ pins, targetWidth: natural * 1.3 }));
   for (const v of r.variants) expect(kinds(v)[6]).toBe("leg+bar");
+  expect(r.variants[0].width).toBeGreaterThan(natural + 100);
   expect(r.warnings).toContain("Zielbreite nicht erreichbar – nächstbeste Breite gezeigt");
+});
+
+test("e Zielbreite: Varianten behalten ihre Verbindungen, auch Balken neben einem Pin ohne Balkenangabe", () => {
+  const pins = { letters: {}, joins: { 6: { type: "share" as const, sub: "leg" as const } } };
+  const free = layoutLine("HAGEN AAD FOCK", opts({ pins }));
+  const fit = layoutLine("HAGEN AAD FOCK", opts({ pins, targetWidth: free.variants[0].width * 1.01 }));
+  const before = free.variants.map(kinds);
+  for (const v of fit.variants) expect(before).toContainEqual(kinds(v));
+  expect(fit.variants.some((v) => kinds(v)[6] === "leg+bar")).toBe(true);
+});
+
+test("e Zielbreite: ein unerfüllbarer Pin schaltet die Breitenanpassung nicht ab", () => {
+  const natural = layoutLine("DIE FLÄCHE", opts()).variants[0].width;
+  const r = layoutLine("DIE FLÄCHE", opts({ pins: { letters: {}, joins: { 0: { type: "nest" } } }, targetWidth: natural + 120 }));
+  expect(Math.abs(r.variants[0].width - (natural + 120))).toBeLessThanOrEqual(2);
+  expect(r.warnings).toEqual(["Pin bei „DI“ nicht erfüllbar"]);
+});
+
+test("e Zielbreite: kein Hinweis, wenn die beste Variante die Breite trifft", () => {
+  const natural = layoutLine("HAGEN AAD FOCK", opts()).variants[0].width;
+  const r = layoutLine("HAGEN AAD FOCK", opts({ targetWidth: natural * 1.1 }));
+  expect(Math.abs(r.variants[0].width - natural * 1.1)).toBeLessThanOrEqual(2);
+  expect(r.warnings).toEqual([]);
+});
+
+test("Pins: ein gepinnter oberer F-Arm bleibt, wie er ist", () => {
+  const pinned = (top: number) => layoutLine("DIE FLÄCHE", opts({ pins: { letters: { 4: { top } }, joins: {} } }));
+  const short = pinned(40);
+  expect(short.variants[0].glyphs.find((g) => g.index === 4)!.inst.p.top).toBe(40);
+  expect(kinds(short.variants[0])).toMatchObject({ 4: "nest", 5: "underrun" });
+  const long = pinned(65.12); // zu lang für FL und LÄ zugleich: lieber eine Verbindung weniger als den Arm kürzen
+  for (const v of long.variants) expect(v.glyphs.find((g) => g.index === 4)!.inst.p.top).toBe(65.12);
+  expect(long.warnings).toEqual([]);
 });
 
 test("joinOptions: Wortgrenze hat keine Optionen", () => {

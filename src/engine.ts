@@ -11,7 +11,7 @@ export type Layout = { glyphs: Placed[]; extras: Stroke[]; joins: Record<number,
 export type Result = { variants: Layout[]; warnings: string[] };
 
 /** Alle Gewichte an einer Stelle. Verbindungskosten bei Verschränkung 0; davon wird gain × Verschränkung abgezogen. */
-export const WEIGHTS = { nest: 0.2, underrun: 0.2, term: 0.2, stem: 1.0, leg: 0.6, bar: 0.6, gain: 1.0, width: 0.2, flush: 0.3, rhythm: 0.2 };
+export const WEIGHTS = { nest: 0.2, underrun: 0.2, term: 0.2, stem: 1.0, leg: 0.6, bar: 0.6, gain: 1.0, width: 0.2, flush: 0.3, rhythm: 0.2, deviation: 5 };
 const BEAM = 32;
 const CODE: Record<string, string> = { none: "-", nest: "N", underrun: "U", term: "T", stem: "S", leg: "L" };
 
@@ -59,10 +59,15 @@ function expand(n: Node, cur: Letter, o: Options, usePins: boolean, force = fals
   for (const j of options) {
     if (pin && (pin.type !== j.type || pin.sub !== j.sub)) continue;
     const res = apply(j, last.inst, cur.def, rp0, s);
-    if (!res || conflicts(res.lp, lockL) || conflicts(res.rp, lockR)) continue;
+    if (!res) continue;
+    // Ein gepinnter oberer Arm gilt: Regeln verlängern ihn nicht, die Armkürzung lässt ihn stehen
+    const lp = lockL?.top === undefined ? res.lp : { ...res.lp, top: lockL.top };
+    if (conflicts(lp, lockL) || conflicts(res.rp, lockR)) continue;
     const rx = last.x + res.dx, r = instance(cur.def, res.rp, s);
-    const l = trimTop(res.lp === last.inst.p ? last.inst : instance(last.inst.def, res.lp, s), last.x, r, rx, s);
-    const p = prev && trimTop(prev.inst, prev.x, r, rx, s);
+    const l0 = lp === last.inst.p ? last.inst : instance(last.inst.def, lp, s);
+    const l = lockL?.top === undefined ? trimTop(l0, last.x, r, rx, s) : l0;
+    const prevTop = usePins && prev ? o.pins.letters[prev.index]?.top : undefined;
+    const p = prev && (prevTop === undefined ? trimTop(prev.inst, prev.x, r, rx, s) : prev.inst);
     if (!force && j.type !== "share" && collides(l, last.x, r, rx, s)) continue;
     if (!force && prev && collides(p!, prev.x, r, rx, s)) continue;
     for (const bar of [false, true]) {
@@ -163,26 +168,32 @@ function assemble(parts: Node[], score: number, s: Style): Layout {
   return { glyphs, extras, joins, ...extent(glyphs), score };
 }
 
-/** Regel e: Breiten im Spielraum anpassen, bis die Zeile die Zielbreite hat (Verbindungen bleiben fest). */
-function fitWidth(v: Layout, ws: Letter[][], o: Options, warn: Set<string>): Layout {
+/** Regel e: Breiten im Spielraum anpassen, bis die Zeile die Zielbreite hat. Verbindungen und Pins bleiben so, wie die Variante sie hat. */
+function fitWidth(v: Layout, ws: Letter[][], o: Options): Layout {
   const target = o.targetWidth!;
-  let cur = v;
-  for (let it = 0; it < 4 && Math.abs(target - cur.width) > 1; it++) {
+  let cur = v, step = 1;
+  for (let it = 0; it < 8 && Math.abs(target - cur.width) > 1; it++) {
     const delta = target - cur.width;
     const flex = cur.glyphs.filter((g) => g.inst.def.params.w && o.pins.letters[g.index]?.w === undefined);
     const room = flex.map((g) => (delta > 0 ? g.inst.def.params.w.max - g.inst.p.w : g.inst.p.w - g.inst.def.params.w.min));
     const total = room.reduce((a, b) => a + b, 0);
     if (total < 1) break;
-    const ratio = Math.min(1, Math.abs(delta) / total) * Math.sign(delta);
-    const letters = { ...o.pins.letters };
+    const ratio = Math.min(1, Math.abs(delta) / total) * Math.sign(delta) * step;
+    // gepinnte Regler so festhalten, wie die Variante sie tatsächlich hat – ein unerfüllbarer Pin blockiert sonst jede Runde
+    const letters: Record<number, Params> = {};
+    for (const g of cur.glyphs) {
+      const lock = o.pins.letters[g.index];
+      if (lock) letters[g.index] = Object.fromEntries(Object.keys(lock).map((k) => [k, g.inst.p[k]]));
+    }
     flex.forEach((g, i) => (letters[g.index] = { ...letters[g.index], w: g.inst.p.w + ratio * room[i] }));
-    const pins: Pins = { letters, joins: { ...cur.joins, ...o.pins.joins } };
     const lost = new Set<string>();
-    const next = assemble(ws.map((w) => searchWord(w, { ...o, pins }, lost)[0]), v.score, o.style);
-    if (lost.size) break; // breitere Buchstaben würden eine Verbindung oder einen Pin brechen: beim letzten Stand bleiben
+    const next = assemble(ws.map((w) => searchWord(w, { ...o, pins: { letters, joins: cur.joins } }, lost)[0]), v.score, o.style);
+    if (lost.size) {
+      step /= 2; // Schritt zu groß: eine Verbindung würde reißen – kleiner weiter
+      continue;
+    }
     cur = next;
   }
-  if (Math.abs(target - cur.width) > 2) warn.add("Zielbreite nicht erreichbar – nächstbeste Breite gezeigt");
   return cur;
 }
 
@@ -203,7 +214,14 @@ export function layoutLine(text: string, o: Options): Result {
       .slice(0, count);
   }
   let variants = combos.map((c) => assemble(c.parts, c.score, s));
-  if (o.targetWidth) variants = variants.map((v) => fitWidth(v, ws, o, warn));
+  if (o.targetWidth) {
+    const t = o.targetWidth;
+    variants = variants
+      .map((v) => fitWidth(v, ws, o))
+      .map((v) => ({ ...v, score: v.score + WEIGHTS.deviation * (Math.abs(t - v.width) / s.capHeight) }))
+      .sort((a, b) => a.score - b.score); // stabil: Gleichstände behalten ihre Rangfolge
+    if (Math.abs(t - variants[0].width) > 2) warn.add("Zielbreite nicht erreichbar – nächstbeste Breite gezeigt");
+  }
   return { variants, warnings: [...warn] };
 }
 
