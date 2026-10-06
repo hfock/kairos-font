@@ -1,0 +1,11 @@
+{
+  "name": "habundgutfont",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun --port=3457 ./index.html",
+    "test": "bun test",
+    "typecheck": "bunx tsc --noEmit -p .",
+    "sheet": "bun tools/sheet.ts"
+  }
+}
