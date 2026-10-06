@@ -1,0 +1,9 @@
+{
+  "name": "DIE FLÄCHE",
+  "text": "DIE FLÄCHE",
+  "style": "flaeche-1902",
+  "controls": { "targetWidth": null, "interlock": 0.5 },
+  "variant": 0,
+  "pins": { "letters": {}, "joins": {} },
+  "overlay": { "src": "die-flaeche", "x": -73.2, "y": -66.3, "w": 2421.7, "h": 835.3 }
+}
