@@ -37,12 +37,14 @@ export function svgString(l: Layout, s: Style, o: RenderOpts): string {
     out.push(`</g>`);
   }
   out.push(`<g id="ink" ${flip} fill="none" stroke="${o.ink}" stroke-width="${s.stroke}" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4">`);
+  // Zeilenband in Schriftkoordinaten: schräge Füße und Spitzen enden waagrecht an Grund- und Oberlinie
+  out.push(`<clipPath id="kairos-zeile"><rect x="${x}" y="0" width="${w}" height="${H}"/></clipPath><g clip-path="url(#kairos-zeile)">`);
   for (const g of l.glyphs) {
     out.push(`<g data-i="${g.index}" transform="translate(${r1(g.x)} 0)">`);
     for (const st of g.inst.strokes) out.push(`<path d="${pathData(st)}"/>`);
     out.push(`</g>`);
   }
   for (const e of l.extras) out.push(`<path d="${pathData(e)}"/>`);
-  out.push(`</g></svg>`);
+  out.push(`</g></g></svg>`);
   return out.join("");
 }

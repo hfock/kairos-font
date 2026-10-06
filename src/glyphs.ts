@@ -31,6 +31,8 @@ const inkTop = (p: Params, s: Style) => s.capHeight * p.h;
 const cTop = (p: Params, s: Style) => inkTop(p, s) - s.stroke / 2; // Mittellinie oben
 const cBot = (s: Style) => s.stroke / 2; // Mittellinie unten
 const barY = (p: Params, s: Style) => (p.bar ? s.barLow : s.barHigh) * p.h;
+/** So weit ragt die tiefste Ecke eines stumpfen Schrägstrichs (Lauf dx, Höhe dy) unter seinen Endpunkt. */
+const capDrop = (dx: number, dy: number, s: Style) => (s.stroke / 2) * (dx / Math.hypot(dx, dy));
 
 const glyphA: GlyphDef = {
   char: "A",
@@ -38,7 +40,9 @@ const glyphA: GlyphDef = {
   draw(p, s) {
     const t = cTop(p, s), run = (p.w - s.apexW) / 2, by = barY(p, s);
     const xl = (y: number) => (y / t) * run, xr = (y: number) => p.w - (y / t) * run;
-    return [stroke(xl(p.legL), p.legL, L(run, t), L(p.w - run, t), L(p.w, 0)), stroke(xl(by), by, L(xr(by), by))];
+    const foot = -capDrop(run, t, s); // Füße knapp unter die Grundlinie; der Renderer schneidet dort waagrecht ab
+    const y0 = p.legL > 0 ? p.legL : foot;
+    return [stroke(xl(y0), y0, L(run, t), L(p.w - run, t), L(xr(foot), foot)), stroke(xl(by), by, L(xr(by), by))];
   },
   docks(p, s) {
     const t = cTop(p, s), run = (p.w - s.apexW) / 2, by = barY(p, s);
@@ -50,7 +54,7 @@ const glyphA: GlyphDef = {
   },
   lift(p, y, s) {
     const t = cTop(p, s), run = (p.w - s.apexW) / 2;
-    return { ...p, legL: y + (s.stroke / 2) * (run / Math.hypot(run, t)) }; // Schnittkante des Beins liegt schräg
+    return { ...p, legL: y + capDrop(run, t, s) }; // Schnittkante des Beins liegt schräg
   },
 };
 
@@ -165,7 +169,9 @@ const glyphK: GlyphDef = {
   params: { h, w: R(180, 230, 280) },
   draw(p, s) {
     const j = s.barHigh * p.h; // Arme treffen sich auf der oberen Balkenlinie
-    return [stroke(0, 0, L(0, inkTop(p, s))), stroke(0.9 * p.w, cTop(p, s), L(0, j), L(p.w, 0))];
+    const drop = capDrop(p.w, j, s); // Fuß knapp unter die Grundlinie; der Renderer schneidet waagrecht ab
+    // Arm und Bein als eigene Striche: ihre stumpfen Enden verschwinden im Stamm, nichts ragt links heraus
+    return [stroke(0, 0, L(0, inkTop(p, s))), stroke(0.9 * p.w, cTop(p, s), L(0, j)), stroke(0, j, L(p.w * (1 + drop / j), -drop))];
   },
   docks: () => [{ kind: "stem", side: "left", x: 0 }],
 };

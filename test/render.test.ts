@@ -14,11 +14,12 @@ test("SVG: ein Gruppe je Buchstabe, ein Pfad je Strich, keine NaN", () => {
   expect(svg).not.toContain("NaN");
   expect(svg).toContain(`viewBox="${Math.round((v.minX - 60) * 10) / 10} -60 `);
   expect(svg).toContain('<g id="ink" transform="matrix(1 0 0 -1 0 700)"'); // y-Achse gespiegelt
+  expect(svg).toMatch(/<clipPath id="kairos-zeile"><rect x="[^"]+" y="0" width="[^"]+" height="700"\/><\/clipPath><g clip-path="url\(#kairos-zeile\)">/);
 });
 
 test("Export ohne Bedienelemente; transparent ohne Papier", () => {
   const svg = svgString(v, S, { ink: "#000", paper: null });
-  expect(svg).not.toContain("<rect");
+  expect(svg).not.toMatch(/<rect [^>]*fill=/); // kein Papier, keine Klickflächen (das Zeilenband hat keine Füllung)
   expect(svg).not.toContain('class="hit"');
 });
 

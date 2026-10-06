@@ -25,7 +25,7 @@ test("Tinte bleibt endlich und im Buchstabenfeld (Höhe, x ≥ linker Bezug)", (
       const top = S.capHeight * p.h;
       for (const q of ink) {
         expect(Number.isFinite(q.x) && Number.isFinite(q.y)).toBe(true);
-        expect(q.y).toBeGreaterThanOrEqual(-S.stroke / 2); // schräge Füße dürfen minimal unter die Grundlinie
+        expect(q.y).toBeGreaterThanOrEqual(-S.stroke); // Füße reichen bis eine Strichstärke unter die Grundlinie, der Renderer schneidet dort waagrecht ab
         expect(q.y).toBeLessThanOrEqual(top + S.stroke / 2);
         expect(q.x).toBeGreaterThanOrEqual(-S.stroke);
         expect(q.x).toBeLessThan(1000);
@@ -68,4 +68,13 @@ test("inRange: Toleranz relativ zum Spielraum", () => {
   expect(inRange(GLYPHS.L, { h: 0.6, foot: 0 })).toBe(true);
   expect(inRange(GLYPHS.L, { h: 0.59, foot: 0 })).toBe(false);
   expect(inRange(GLYPHS.L, { h: 1, foot: 321 })).toBe(false);
+});
+
+test("Füße von A, Ä und K reichen knapp unter die Grundlinie (waagrechter Schnitt im Renderer), K-Arm und -Bein sind eigene Striche", () => {
+  for (const c of ["A", "Ä", "K"]) {
+    const ys = GLYPHS[c].draw(defaults(GLYPHS[c]), S).flatMap((st) => [st.start.y, ...st.segs.map((g) => g.p.y)]);
+    expect(Math.min(...ys)).toBeLessThan(0);
+    expect(Math.min(...ys)).toBeGreaterThan(-S.stroke / 2);
+  }
+  expect(GLYPHS.K.draw(defaults(GLYPHS.K), S).length).toBe(3);
 });
