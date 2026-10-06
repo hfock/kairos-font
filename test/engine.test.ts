@@ -47,6 +47,15 @@ test("unerfüllbarer Pin → Hinweis, Satz trotzdem da", () => {
   expect(r.variants.length).toBeGreaterThan(0);
 });
 
+test("Pins außerhalb des Spielraums: Hinweis statt Absturz oder stiller Übernahme", () => {
+  const wide = layoutLine("FL", opts({ pins: { letters: { 0: { w: 1000 } }, joins: {} }, targetWidth: 800 }));
+  expect(wide.variants.length).toBeGreaterThan(0);
+  expect(wide.warnings).toContain("Pin bei „F“ nicht erfüllbar");
+  const arm = layoutLine("AFL", opts({ pins: { letters: { 1: { top: 300 } }, joins: {} } }));
+  expect(arm.variants[0].glyphs.find((g) => g.index === 1)!.inst.p.top).toBeLessThanOrEqual(200);
+  expect(arm.warnings.some((w) => w.includes("nicht erfüllbar"))).toBe(true);
+});
+
 test("Kleinbuchstaben werden in M1 zu Versalien, unbekannte Zeichen zu Platzhaltern", () => {
   expect(layoutLine("die fläche", opts()).variants.map(kinds)).toEqual(layoutLine("DIE FLÄCHE", opts()).variants.map(kinds));
   const r = layoutLine("ÜBER", opts());

@@ -1,5 +1,5 @@
 import { gapOffset, mergeProfiles, shift, type Profile, type Stroke } from "./geom";
-import { GLYPHS, PLACEHOLDER, defaults, type GlyphDef, type Params } from "./glyphs";
+import { GLYPHS, PLACEHOLDER, defaults, inRange, type GlyphDef, type Params } from "./glyphs";
 import { apply, barLink, collides, instance, joinsFor, trimTop, type Inst, type Join } from "./rules";
 import type { Style } from "./style";
 
@@ -62,7 +62,7 @@ function expand(n: Node, cur: Letter, o: Options, usePins: boolean, force = fals
     if (!res) continue;
     // Ein gepinnter oberer Arm gilt: Regeln verlängern ihn nicht, die Armkürzung lässt ihn stehen
     const lp = lockL?.top === undefined ? res.lp : { ...res.lp, top: lockL.top };
-    if (conflicts(lp, lockL) || conflicts(res.rp, lockR)) continue;
+    if (conflicts(lp, lockL) || conflicts(res.rp, lockR) || !inRange(last.inst.def, lp)) continue;
     const rx = last.x + res.dx, r = instance(cur.def, res.rp, s);
     const l0 = lp === last.inst.p ? last.inst : instance(last.inst.def, lp, s);
     const l = lockL?.top === undefined ? trimTop(l0, last.x, r, rx, s) : l0;
@@ -101,7 +101,11 @@ function prune(nodes: Node[]): Node[] {
 /** Strahlsuche über die Buchstabengrenzen eines Worts. */
 function searchWord(word: Letter[], o: Options, warn: Set<string>): Node[] {
   const s = o.style, first = word[0];
-  const p0 = { ...defaults(first.def), ...o.pins.letters[first.index] };
+  let p0 = { ...defaults(first.def), ...o.pins.letters[first.index] };
+  if (!inRange(first.def, p0)) {
+    warn.add(`Pin bei „${first.char}“ nicht erfüllbar`); // Wert außerhalb des Spielraums, z. B. aus einer bearbeiteten Vorlage
+    p0 = defaults(first.def);
+  }
   let beam: Node[] = [{ placed: [{ index: first.index, char: first.char, inst: instance(first.def, p0, s), x: 0 }], joins: {}, extras: [], cost: 0, key: "" }];
   for (let k = 1; k < word.length; k++) {
     let next = beam.flatMap((n) => expand(n, word[k], o, true));
@@ -214,7 +218,7 @@ export function layoutLine(text: string, o: Options): Result {
       .slice(0, count);
   }
   let variants = combos.map((c) => assemble(c.parts, c.score, s));
-  if (o.targetWidth) {
+  if (o.targetWidth && variants.length) {
     const t = o.targetWidth;
     variants = variants
       .map((v) => fitWidth(v, ws, o))
