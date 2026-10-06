@@ -13,6 +13,7 @@ test("SVG: ein Gruppe je Buchstabe, ein Pfad je Strich, keine NaN", () => {
   expect(svg.match(/<path /g)!.length).toBe(strokes);
   expect(svg).not.toContain("NaN");
   expect(svg).toContain(`viewBox="${Math.round((v.minX - 60) * 10) / 10} -60 `);
+  expect(svg).toContain('<g id="ink" transform="matrix(1 0 0 -1 0 700)"'); // y-Achse gespiegelt
 });
 
 test("Export ohne Bedienelemente; transparent ohne Papier", () => {
@@ -30,4 +31,8 @@ test("Vorschau: Klickflächen, Auswahl, Pin-Marke, Overlay", () => {
   expect(svg.match(/class="hit"/g)!.length).toBe(8);
   expect(svg).toContain('class="pin"');
   expect(svg).toContain('<image href="x.jpg"');
+  expect(svg).not.toContain("NaN");
+  expect(svg).toMatch(/<g data-i="4"[^>]*><rect class="sel"/); // Auswahl sitzt beim richtigen Buchstaben
+  expect(svg).toMatch(/<g data-i="5"[^>]*><rect class="hit"[^>]*\/><circle class="pin"/);
+  expect(svg).toMatch(/class="hits"[\s\S]*id="ink"/); // Klickflächen liegen unter der Tinte
 });
