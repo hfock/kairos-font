@@ -55,6 +55,7 @@ function expand(n: Node, cur: Letter, o: Options, usePins: boolean, force = fals
   const lockL = usePins ? o.pins.letters[last.index] : undefined;
   const lockR = usePins ? o.pins.letters[cur.index] : undefined;
   const rp0 = { ...defaults(cur.def), ...lockR };
+  if (!inRange(cur.def, rp0)) return []; // Pin außerhalb des Spielraums (Vorlage/Speicher): wie unerfüllbar behandeln – sonst riesige Striche
   const options = force ? [{ type: "none" } as Join] : joinsFor(last.inst, instance(cur.def, rp0, s));
   for (const j of options) {
     if (pin && (pin.type !== j.type || pin.sub !== j.sub)) continue;

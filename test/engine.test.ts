@@ -56,6 +56,14 @@ test("Pins außerhalb des Spielraums: Hinweis statt Absturz oder stiller Überna
   expect(arm.warnings.some((w) => w.includes("nicht erfüllbar"))).toBe(true);
 });
 
+test("Pin außerhalb des Spielraums mitten im Wort: Hinweis statt Hängen", () => {
+  const t0 = performance.now();
+  const r = layoutLine("DIE", opts({ pins: { letters: { 1: { h: 1e5 } }, joins: {} } }));
+  expect(performance.now() - t0).toBeLessThan(500);
+  expect(r.warnings).toContain("Pin bei „DI“ nicht erfüllbar");
+  expect(r.variants[0].glyphs.find((g) => g.index === 1)!.inst.p.h).toBe(1);
+});
+
 test("Kleinbuchstaben werden in M1 zu Versalien, unbekannte Zeichen zu Platzhaltern", () => {
   expect(layoutLine("die fläche", opts()).variants.map(kinds)).toEqual(layoutLine("DIE FLÄCHE", opts()).variants.map(kinds));
   const r = layoutLine("ÜBER", opts());

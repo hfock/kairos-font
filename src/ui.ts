@@ -1,7 +1,7 @@
 import dieFlaeche from "../presets/die-flaeche.json";
 import hagen from "../presets/hagen-aad-fock.json";
 import overlayUrl from "../reference/die-flaeche-overlay.jpg";
-import { joinOptions, layoutLine, type Layout, type Pins, type Placed } from "./engine";
+import { joinOptions, layoutLine, type Layout, type Placed } from "./engine";
 import type { Params } from "./glyphs";
 import { svgString, type Overlay } from "./render";
 import type { Join } from "./rules";
@@ -208,7 +208,9 @@ function joinSelect(sel: HTMLSelectElement, boundary: number) {
     if (sel.value === "auto") delete state.pins.joins[boundary];
     else {
       const autoBar = !!auto && jkey(auto) === sel.value && !!auto.bar; // gleiche Verbindung wie automatisch: Balken behalten
-      state.pins.joins[boundary] = { ...opts.find((j) => jkey(j) === sel.value)!, bar: state.pins.joins[boundary]?.bar ?? autoBar };
+      const j = opts.find((o) => jkey(o) === sel.value)!;
+      const barAllowed = j.type === "none" || j.type === "share"; // verschachteln/unterfahren tragen keinen Balken
+      state.pins.joins[boundary] = { ...j, bar: barAllowed && (state.pins.joins[boundary]?.bar ?? autoBar) };
     }
     update();
     commit();
@@ -288,8 +290,8 @@ for (const [id, set] of sliders) {
 
 $("targetFree").addEventListener("change", () => {
   state.target = $("targetFree").checked ? null : Math.round(layout?.width ?? 2400);
-  syncControls();
   update();
+  syncControls();
   commit();
 });
 $("overlay").addEventListener("change", () => {
