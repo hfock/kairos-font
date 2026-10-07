@@ -1,4 +1,4 @@
-import { C, L, closed, stroke, type Seg, type Stroke } from "./geom";
+import { C, L, closed, stroke, type Pt, type Seg, type Stroke } from "./geom";
 import type { Style } from "./style";
 
 export type Params = Record<string, number>;
@@ -408,6 +408,115 @@ const glyphOE: GlyphDef = {
   },
 };
 
+// ── Ziffern (M2) ──
+
+/** Strich Punkt für Punkt abbilden (verschieben, um 180° drehen). */
+const mapPts = (st: Stroke, f: (q: Pt) => Pt): Stroke => ({
+  ...st,
+  start: f(st.start),
+  segs: st.segs.map((g): Seg => (g.k === "L" ? { k: "L", p: f(g.p) } : { k: "C", c1: f(g.c1), c2: f(g.c2), p: f(g.p) })),
+});
+
+const glyph0: GlyphDef = { ...glyphO, char: "0", params: { h, w: R(160, 200, 240) } };
+
+const glyph1: GlyphDef = {
+  char: "1",
+  params: { h, w: R(60, 90, 140) },
+  draw: (p, s) => [stroke(p.w, 0, L(p.w, inkTop(p, s))), stroke(0, s.barHigh * p.h, L(p.w, cTop(p, s)))], // Fahne von der oberen Balkenlinie
+  docks: () => [],
+};
+
+/** Kopf mit Ecke oben rechts (gespiegelter S-Kopf), rechts hinab bis y. */
+function head2(p: Params, s: Style, y: number): Seg[] {
+  const t = cTop(p, s), r = 0.143 * inkTop(p, s), k = KAPPA * r;
+  return [L(p.w - r, t), C(p.w - r + k, t, p.w, t - r + k, p.w, t - r), L(p.w, y)];
+}
+
+const glyph2: GlyphDef = {
+  char: "2",
+  params: { h, w: R(180, 230, 290) },
+  draw: (p, s) => [stroke(0, cTop(p, s), ...head2(p, s, s.barHigh * p.h), L(0, cBot(s)), L(p.w, cBot(s)))],
+  docks: () => [],
+};
+
+const glyph3: GlyphDef = {
+  char: "3",
+  params: { h, w: R(180, 230, 290) },
+  draw(p, s) {
+    const t = cTop(p, s), y = s.barHigh * p.h, w1 = 0.82 * p.w, r = (t - y) / 2, k = KAPPA * r, a = 0.35 * p.w;
+    // ein Strich: Bauch oben, Taille nach links, spitz umkehren in den Segel-Bauch unten
+    return [
+      stroke(0, t, L(w1 - r, t), C(w1 - r + k, t, w1, t - r + k, w1, t - r), C(w1, y + r - k, w1 - r + k, y, w1 - r, y), L(a, y),
+        ...belly(a, y, p.w, cBot(s), 47 * p.h), L(0, cBot(s))),
+    ];
+  },
+  docks: () => [],
+};
+
+const glyph4: GlyphDef = {
+  char: "4",
+  params: { h, w: R(200, 250, 300) },
+  draw(p, s) {
+    const xs = 0.72 * p.w, y = s.barLow * p.h;
+    return [stroke(xs, 0, L(xs, inkTop(p, s))), stroke(xs, cTop(p, s), L(0, y), L(p.w, y))]; // Querbalken auf der unteren Linie
+  },
+  docks: () => [],
+};
+
+const glyph5: GlyphDef = {
+  char: "5",
+  params: { h, w: R(180, 230, 290) },
+  draw(p, s) {
+    const t = cTop(p, s), b = cBot(s), y = s.barHigh * p.h, a = 0.3 * p.w;
+    return [stroke(0.85 * p.w, t, L(0, t), L(0, y), L(a, y), ...belly(a, y, p.w, b, 47 * p.h), L(0, b))];
+  },
+  docks: () => [],
+};
+
+/** 6: Kopf wie beim C, Schleife unten bis zur oberen Balkenlinie. */
+function six(p: Params, s: Style): Stroke {
+  const t = cTop(p, s), b = cBot(s), rc = 0.143 * inkTop(p, s), kc = KAPPA * rc, r = p.w / 2, k = KAPPA * r, yk = s.barHigh * p.h;
+  return stroke(0.85 * p.w, t, L(rc, t), C(rc - kc, t, 0, t - rc + kc, 0, t - rc), L(0, b + r),
+    C(0, b + r - k, r - k, b, r, b), C(r + k, b, p.w, b + r - k, p.w, b + r), L(p.w, yk - r),
+    C(p.w, yk - r + k, r + k, yk, r, yk), C(r - k, yk, 0, yk - r + k, 0, yk - r));
+}
+
+const glyph6: GlyphDef = { char: "6", params: { h, w: R(180, 230, 280) }, draw: (p, s) => [six(p, s)], docks: () => [] };
+
+const glyph9: GlyphDef = {
+  char: "9",
+  params: { h, w: R(180, 230, 280) },
+  draw: (p, s) => [mapPts(six(p, s), (q) => ({ x: p.w - q.x, y: inkTop(p, s) - q.y }))], // 6 um 180° gedreht: Schleife oben bis zur unteren Linie
+  docks: () => [],
+};
+
+const glyph7: GlyphDef = {
+  char: "7",
+  params: { h, w: R(180, 230, 290) },
+  draw(p, s) {
+    const t = cTop(p, s), x0 = 0.3 * p.w, d = capDrop(p.w - x0, t, s);
+    return [stroke(0, t, L(p.w, t), L(x0 - ((p.w - x0) * d) / t, -d))];
+  },
+  docks: () => [],
+};
+
+const glyph8: GlyphDef = {
+  char: "8",
+  params: { h, w: R(180, 230, 290) },
+  draw(p, s) {
+    const t = cTop(p, s), b = cBot(s), y = s.barHigh * p.h, w1 = 0.8 * p.w, x1 = (p.w - w1) / 2, r1 = (t - y) / 2, k1 = KAPPA * r1;
+    const r = p.w / 2, k = KAPPA * r;
+    return [
+      closed(stroke(x1 + r1, t, L(x1 + w1 - r1, t), C(x1 + w1 - r1 + k1, t, x1 + w1, t - r1 + k1, x1 + w1, t - r1),
+        C(x1 + w1, y + r1 - k1, x1 + w1 - r1 + k1, y, x1 + w1 - r1, y), L(x1 + r1, y),
+        C(x1 + r1 - k1, y, x1, y + r1 - k1, x1, y + r1), C(x1, t - r1 + k1, x1 + r1 - k1, t, x1 + r1, t))),
+      closed(stroke(0, b + r, L(0, y - r), C(0, y - r + k, r - k, y, r, y), C(r + k, y, p.w, y - r + k, p.w, y - r),
+        L(p.w, b + r), C(p.w, b + r - k, r + k, b, r, b), C(r - k, b, 0, b + r - k, 0, b + r))),
+    ];
+  },
+  docks: () => [],
+};
+
 /** Ersatz für noch nicht entworfene Zeichen. */
 export const PLACEHOLDER: GlyphDef = {
   char: "?",
@@ -417,7 +526,11 @@ export const PLACEHOLDER: GlyphDef = {
 };
 
 export const GLYPHS: Record<string, GlyphDef> = Object.fromEntries(
-  [glyphA, glyphAE, glyphB, glyphC, glyphD, glyphE, glyphF, glyphG, glyphH, glyphI, glyphJ, glyphK, glyphL, glyphM, glyphN, glyphO, glyphOE, glyphP, glyphQ, glyphR, glyphS, glyphSZ, glyphT, glyphU, glyphUE, glyphV, glyphW, glyphX, glyphY, glyphZ].map((g) => [g.char, g]),
+  [
+    glyphA, glyphAE, glyphB, glyphC, glyphD, glyphE, glyphF, glyphG, glyphH, glyphI, glyphJ, glyphK, glyphL, glyphM, glyphN, glyphO, glyphOE,
+    glyphP, glyphQ, glyphR, glyphS, glyphSZ, glyphT, glyphU, glyphUE, glyphV, glyphW, glyphX, glyphY, glyphZ,
+    glyph0, glyph1, glyph2, glyph3, glyph4, glyph5, glyph6, glyph7, glyph8, glyph9,
+  ].map((g) => [g.char, g]),
 );
 
 export const defaults = (g: GlyphDef): Params => Object.fromEntries(Object.entries(g.params).map(([k, r]) => [k, r.def]));

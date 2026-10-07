@@ -9,6 +9,7 @@ const jobs: [string, string, number][] = [
   ["glyphen", "A B C D E F G H I J K L M N O", 0],
   ["glyphen-2", "P Q R S T U V W X Y Z Ä Ö Ü ẞ", 0],
   ["wiener-werkstaette", "WIENER WERKSTÄTTE", 0.5],
+  ["ziffern", "0 1 2 3 4 5 6 7 8 9", 0],
   ["die-flaeche", "DIE FLÄCHE", 0.5],
   ["hagen-aad-fock", "HAGEN AAD FOCK", 0.5],
   ["hagen-aad-fock-wild", "HAGEN AAD FOCK", 1],

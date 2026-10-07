@@ -5,6 +5,7 @@ import { barLink, instance } from "../src/rules";
 import { FLAECHE_1902 as S } from "../src/style";
 
 const ALL = [..."ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÜẞ"];
+const DIGITS = [..."0123456789"];
 const ink = (st: Stroke[]) => st.flatMap((x) => inkPoints(x, S.stroke / 2));
 const kinds = (c: string, p: Partial<Params> = {}) =>
   GLYPHS[c].docks({ ...defaults(GLYPHS[c]), ...p }, S).map((d) => d.kind + ("side" in d ? ":" + d.side : ""));
@@ -21,9 +22,13 @@ test("alle Versalien, Umlaute und ẞ sind entworfen", () => {
   expect(ALL.filter((c) => !GLYPHS[c])).toEqual([]);
 });
 
+test("Ziffern sind entworfen", () => {
+  expect(DIGITS.filter((c) => !GLYPHS[c])).toEqual([]);
+});
+
 test("Tinte bleibt endlich und im Buchstabenfeld (Höhe, x ≥ linker Bezug)", () => {
   const bad = new Set<string>();
-  for (const g of [...ALL.map((c) => GLYPHS[c]), PLACEHOLDER])
+  for (const g of [...[...ALL, ...DIGITS].map((c) => GLYPHS[c]), PLACEHOLDER])
     for (const p of variants(g)) {
       const top = S.capHeight * p.h;
       for (const q of ink(g.draw(p, S))) {
