@@ -46,6 +46,21 @@ Im Prototyp geklärt; der Code in diesem Plan ist dort gelaufen (72 Bun-Tests, 1
 | §4.3 Monogramm | Startidee umgesetzt; Feinform nach der Sichtprüfung in Task 4 | – |
 | Zeichen-Tabelle „Leerzeichen … Lichtweite wie der Wortabstand der App (136)“ | festes Leerzeichen 80: 136 von Kasten zu Kasten | die App setzt Wörter nach der Tinte; an offenen Seiten (F␣A, L␣T, A␣V) steht der Font bis zu ~170 Einheiten weiter. Wortabstand nach Tinte bräuchte kontextabhängiges GPOS – Entscheidung bei der Abnahme (sonst M3) |
 
+### Während der Umsetzung entschieden
+
+| Spec/Plan | Umsetzung | Grund |
+|---|---|---|
+| Balken-Häkchen (Plan: prüft nur den Balken) | anklickbar nur, wo die Engine an dieser Grenze verbinden kann; ein gesetztes Häkchen bleibt zum Abwählen anklickbar | Spec §8 „nur anklickbar, wenn die Verbindung möglich ist“ |
+| Verschachteln vor Satzzeichen (Plan: Höhe immer setzen) | Zeichen ohne Höhenregler bleiben unverändert (Schutz in `rules.ts`) | Punkte und Striche sollen nicht schrumpfen |
+| „?“, „&“, „€“ | schrumpfen beim Verschachteln wie Buchstaben | buchstabenähnliche Formen mit Breite |
+| Font-Ketten (Code aus dem Plan) | Endstrich auch vor Varianten (`L.foot`), Verbindungs-Unterschneidung auch gegen links freie Varianten, `T.short` rechts frei, ein verschachteltes F verschachtelt nicht noch einmal | GLAS, TEAM, AUFTAKT, OFFEN standen sonst anders als in der Engine (§5.3) |
+| Version (Plan: `versionMinor` 2) | `versionMinor` 200; Name 5 „Version 0.2 <Build-Zeit, Ortszeit>“ | sonst „0.002“; jeder Build ist für macOS eine neue Fassung |
+| §7.4 Vergleichsfläche | mit derselben Strich-Funktion wie der Build; Strichart (stumpf, Gehrung 4, Strich 26) mit dem Renderer abgeglichen | eine Quelle; der Rasterbild-Vergleich im Gesamt-Review ergab höchstens 0,01 % |
+| §7.1 nur Wortliste | Sollwerte zusätzlich für alle Zeichenpaare und F-Dreierfolgen (9087); 15 Folgen, die der Font nicht haben kann (FF vor manchen Satzzeichen, F0?, FJ?), fallen heraus | 14 Wörter hatten vier Kettenfehler nicht gefunden |
+| README (Plan: nur Tabellenzeilen) | dazu „Font benutzen“ (Neuinstallieren, Monogramm) und „Bekannte Grenzen“ | Spec-Risiko „Hinweis zum Neuinstallieren“; Wortabstand |
+| Einbettung (Spec offen) | OS/2 fsType 4 (Vorschau & Druck, ufo2ft-Standard) | erlaubt PDF aus Pages |
+| Geparkt | Export hält alle Layouts im Zwischenspeicher (~2 GB Spitze); die Liste der ausgelassenen Folgen ist nicht festgenagelt | mit M4 (Kleinbuchstaben) angehen |
+
 ## Dateistruktur
 
 | Datei | Aufgabe | Task |
