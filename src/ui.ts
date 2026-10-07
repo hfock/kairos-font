@@ -2,9 +2,9 @@ import dieFlaeche from "../presets/die-flaeche.json";
 import hagen from "../presets/hagen-aad-fock.json";
 import overlayUrl from "../reference/die-flaeche-overlay.jpg";
 import { joinOptions, layoutLine, type Layout, type Placed } from "./engine";
-import type { Dock, Params } from "./glyphs";
+import type { Params } from "./glyphs";
 import { svgString, type Overlay } from "./render";
-import type { Join } from "./rules";
+import { barLink, type Join } from "./rules";
 import { cleanPreset, cleanState, type Preset, type State } from "./presets";
 import { FLAECHE_1902 } from "./style";
 
@@ -205,11 +205,11 @@ function renderLetter() {
   joinSelect($<HTMLSelectElement>("joinLeft"), g.index - 1);
   joinSelect($<HTMLSelectElement>("joinRight"), g.index);
   $("barRight").checked = !!(state.pins.joins[g.index]?.bar ?? layout.joins[g.index]?.bar);
-  // Balken verbinden nur, wenn beide Balken bis an die Grenze reichen und auf derselben Linie liegen (Knoten von B M P R W X Y verbinden nie)
-  const bar = (q: Placed | undefined, side: "left" | "right") =>
-    q?.inst.docks.find((d): d is Extract<Dock, { kind: "bar" }> => d.kind === "bar" && d[side]);
-  const a = bar(g, "right"), b = bar(layout.glyphs.find((q) => q.index === g.index + 1), "left");
-  $("barRight").disabled = !a || !b || Math.abs(a.y - b.y) > 0.5;
+  // Balken verbinden nur, wenn die Engine ihn an dieser Grenze ziehen kann; ein gesetzter Haken bleibt zum Abwählen anklickbar
+  const n = layout.glyphs.find((q) => q.index === g.index + 1);
+  const j = state.pins.joins[g.index] ?? layout.joins[g.index];
+  const possible = !!n && (j?.type === "none" || j?.type === "share") && !!barLink(g.inst, g.x, n.inst, n.x, state.style);
+  $("barRight").disabled = !$("barRight").checked && !possible;
 }
 
 /** Auswahlliste der möglichen Verbindungen an einer Grenze; Auswahl = Pin. */
