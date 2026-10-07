@@ -7,6 +7,6 @@
     "test": "bun test",
     "typecheck": "bunx tsc --noEmit -p .",
     "sheet": "bun tools/sheet.ts",
-    "font": "bun tools/export-font.ts && uv run tools/build_font.py"
+    "font": "bun tools/export-font.ts && uv run tools/build_font.py && uv run tools/test_font.py"
   }
 }
