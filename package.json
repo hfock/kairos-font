@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "bun --port=3457 ./index.html",
+    "dev": "bun --port=3457 ./index.html ./font.html",
     "test": "bun test",
     "typecheck": "bunx tsc --noEmit -p .",
     "sheet": "bun tools/sheet.ts",

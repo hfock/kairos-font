@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>KAIROS Font – Probe</title>
+    <style>
+      body { margin: 0; padding: 16px; font: 14px/1.4 system-ui, sans-serif; color: #1d1a17; background: #f6f1e7; }
+      header { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+      #text { width: min(520px, 80vw); padding: 6px 8px; font: 600 18px system-ui, sans-serif; letter-spacing: 0.08em; }
+      h2 { margin: 20px 0 6px; font-size: 12px; font-weight: 600; color: #6b6152; text-transform: uppercase; letter-spacing: 0.1em; }
+      #font { font-family: "KAIROS Font"; font-size: 120px; line-height: 1.15; white-space: pre; overflow-x: auto; }
+      #font.dlig { font-variant-ligatures: common-ligatures discretionary-ligatures contextual; }
+      #engine svg { display: block; }
+      #status { color: #8a5a12; min-height: 1.4em; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <input id="text" value="DIE FLÄCHE" aria-label="Text" />
+      <label><input id="dlig" type="checkbox" /> bedingte Ligaturen (HAF)</label>
+    </header>
+    <div id="status"></div>
+    <h2>Font (WOFF2, calt und liga an)</h2>
+    <div id="font"></div>
+    <h2>Engine (Verschränkung 0,5)</h2>
+    <div id="engine"></div>
+    <script type="module" src="./src/fonttest.ts"></script>
+  </body>
+</html>
