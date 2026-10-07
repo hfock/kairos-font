@@ -37,6 +37,13 @@ test("Komma mit Unterlänge: liegt außerhalb des Zeilenbands, der Rahmen reicht
   expect(band).toBeGreaterThan(0);
 });
 
+test("Satzzeichen unter dem F-Arm behalten ihre Form: „F/“ ohne eigenen Beschnitt", () => {
+  const fs = layoutLine("F/", { style: S, interlock: 0.5, targetWidth: null, pins: { letters: {}, joins: {} } }).variants[0];
+  expect(fs.joins[0].type).toBe("nest");
+  expect(fs.glyphs[1].inst.p.h).toBeUndefined();
+  expect(svgString(fs, S, { ink: "#000", paper: null })).not.toContain("kairos-h");
+});
+
 test("Export ohne Bedienelemente; transparent ohne Papier", () => {
   const svg = svgString(v, S, { ink: "#000", paper: null });
   expect(svg).not.toMatch(/<rect [^>]*fill=/); // kein Papier, keine Klickflächen (das Zeilenband hat keine Füllung)

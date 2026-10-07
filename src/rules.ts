@@ -43,7 +43,7 @@ export type Applied = { lp: Params; rp: Params; dx: number };
 export function apply(j: Join, l: Inst, rDef: GlyphDef, rp0: Params, s: Style): Applied | null {
   let lp = l.p, rp = rp0, dx: number;
   if (j.type === "nest") {
-    rp = { ...rp, h: (dock(l, "zone")!.armY - s.stroke / 2 - s.clearance) / s.capHeight };
+    if (rDef.params.h) rp = { ...rp, h: (dock(l, "zone")!.armY - s.stroke / 2 - s.clearance) / s.capHeight }; // Satzzeichen ohne Höhenregler bleiben, wie sie sind
     const inkLeft = s.stroke / 2 + s.nestGap;
     dx = inkLeft - instance(rDef, rp, s).prof.minX;
     lp = l.def.cover!(lp, inkLeft + s.nestOverhang);
