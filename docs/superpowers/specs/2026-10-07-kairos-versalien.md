@@ -5,7 +5,7 @@
 | Datum | 2026-10-07 |
 | Grundlage | Spec `2026-10-06-kairos-font-design.md` (§3: Glyphen konstruiert Claude, Abnahme per Sichtprüfung durch Hagen) |
 | Umfang | B J M P Q R S T U V W X Y Z, Ö Ü ẞ |
-| Status | Entwurf zur Sichtprüfung |
+| Status | abgenommen (Sichtprüfung Hagen, 2026-10-07) |
 
 Ziffern, Satzzeichen, Font-Build, `calt`, Namens-Ligatur und Monogramm bleiben beim Rest von M2 (eigene Spec).
 
