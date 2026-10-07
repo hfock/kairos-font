@@ -88,8 +88,8 @@ test("Buchstaben-Pin widerspricht Verbindungs-Pin: der Verbindungs-Pin rechts da
 
 test("Kleinbuchstaben werden zu Versalien, unbekannte Zeichen zu Platzhaltern", () => {
   expect(layoutLine("die fläche", opts()).variants.map(kinds)).toEqual(layoutLine("DIE FLÄCHE", opts()).variants.map(kinds));
-  const r = layoutLine("@ÜBER", opts());
-  expect(r.warnings).toEqual(["Zeichen „@“ noch nicht entworfen"]);
+  const r = layoutLine("~ÜBER", opts());
+  expect(r.warnings).toEqual(["Zeichen „~“ noch nicht entworfen"]);
   expect(r.variants[0].glyphs[0].inst.def.char).toBe("?");
 });
 

@@ -137,8 +137,8 @@ function renderPreview() {
 
 /** Griffe in Buchstabenkoordinaten: Höhe, Breite, Balken, Fuß, oberer Arm. */
 function handles(g: Placed): { kind: HandleKind; x: number; y: number }[] {
-  const s = state.style, p = g.inst.p, has = g.inst.def.params, { minX, maxX } = g.inst.prof, top = s.capHeight * p.h;
-  const out: { kind: HandleKind; x: number; y: number }[] = [{ kind: "h", x: (minX + maxX) / 2, y: top }];
+  const s = state.style, p = g.inst.p, has = g.inst.def.params, { minX, maxX } = g.inst.prof, top = s.capHeight * (p.h ?? 1);
+  const out: { kind: HandleKind; x: number; y: number }[] = has.h ? [{ kind: "h", x: (minX + maxX) / 2, y: top }] : []; // Satzzeichen: kein Höhengriff
   if (has.w) out.push({ kind: "w", x: maxX, y: top / 2 });
   for (const d of g.inst.docks) {
     if (d.kind === "bar" && has.bar) out.push({ kind: "bar", x: (d.x0 + d.x1) / 2, y: d.y });

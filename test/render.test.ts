@@ -27,6 +27,16 @@ test("kürzere Buchstaben mit Ink über der eigenen Oberkante werden dort abgesc
   expect(svgString(v, S, { ink: "#000", paper: null })).not.toContain("kairos-h"); // verschachteltes L in DIE FLÄCHE: nichts ragt über
 });
 
+test("Komma mit Unterlänge: liegt außerhalb des Zeilenbands, der Rahmen reicht 130 tiefer", () => {
+  const c = layoutLine("WIEN, 12.", { style: S, interlock: 0.5, targetWidth: null, pins: { letters: {}, joins: {} } }).variants[0];
+  const svg = svgString(c, S, { ink: "#000", paper: null });
+  expect(svg).toContain(`viewBox="${Math.round((c.minX - 60) * 10) / 10} -60 `);
+  expect(svg).toMatch(/viewBox="[^"]+ 950"/); // 700 + 2 × 60 + 130
+  const band = svg.indexOf('clip-path="url(#kairos-zeile)"'), comma = svg.indexOf('data-i="4"'), close = svg.indexOf("</g>", svg.lastIndexOf('data-i="8"'));
+  expect(comma).toBeGreaterThan(close); // Komma (Index 4) erst nach dem Band
+  expect(band).toBeGreaterThan(0);
+});
+
 test("Export ohne Bedienelemente; transparent ohne Papier", () => {
   const svg = svgString(v, S, { ink: "#000", paper: null });
   expect(svg).not.toMatch(/<rect [^>]*fill=/); // kein Papier, keine Klickflächen (das Zeilenband hat keine Füllung)

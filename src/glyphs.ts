@@ -17,6 +17,7 @@ export interface GlyphDef {
   draw(p: Params, s: Style): Stroke[];
   docks(p: Params, s: Style): Dock[];
   adjust?: { left?: number; right?: number }; // Abstandskorrektur je Seite (Einheiten)
+  desc?: number; // Unterlänge: Tinte reicht bis −desc unter die Grundlinie (Komma, tiefe Anführungszeichen)
   cover?(p: Params, end: number): Params; // Mittelarm bis end, oberer Arm entsprechend (Verschachteln)
   reach?(p: Params, end: number): Params; // Fuß bis end (Unterfahren)
   close?(p: Params, x: number): Params; // Bogenende bis x (Strich teilen)
@@ -517,6 +518,238 @@ const glyph8: GlyphDef = {
   docks: () => [],
 };
 
+// ── Satz- und Plakatzeichen (M2) ──
+
+const moveBy = (dx: number, dy: number) => (q: Pt): Pt => ({ x: q.x + dx, y: q.y + dy });
+
+const square = (x: number, y: number, s: Style) => stroke(x - s.stroke / 2, y, L(x + s.stroke / 2, y)); // Punkt: Quadrat um (x, y)
+
+const mid = (s: Style) => s.capHeight / 2; // halbe Versalhöhe, für Striche und Zeichen in der Mitte
+
+const fixed: Record<string, Range> = {}; // Satzzeichen: keine Regler, die Form bleibt auch verschachtelt
+
+const glyphPeriod: GlyphDef = { char: ".", params: fixed, draw: (_p, s) => [square(s.stroke / 2, s.stroke / 2, s)], docks: () => [] };
+
+/** Komma: Punkt auf der Grundlinie, Schwanz schräg nach links unten (Unterlänge). */
+const comma = (x: number, s: Style) => [square(x, s.stroke / 2, s), stroke(x + 7, s.stroke / 2, L(x - 19, -117))];
+
+const glyphComma: GlyphDef = { char: ",", params: fixed, desc: 130, draw: (_p, s) => comma(s.stroke / 2 + 19, s), docks: () => [] };
+
+const glyphColon: GlyphDef = {
+  char: ":",
+  params: fixed,
+  draw: (_p, s) => [square(s.stroke / 2, s.stroke / 2, s), square(s.stroke / 2, s.barLow, s)],
+  docks: () => [],
+};
+
+const glyphSemicolon: GlyphDef = {
+  char: ";",
+  params: fixed,
+  desc: 130,
+  draw: (_p, s) => [...comma(s.stroke / 2 + 19, s), square(s.stroke / 2 + 19, s.barLow, s)],
+  docks: () => [],
+};
+
+const glyphExclam: GlyphDef = {
+  char: "!",
+  params: fixed,
+  draw: (_p, s) => [stroke(s.stroke / 2, s.barLow, L(s.stroke / 2, s.capHeight)), square(s.stroke / 2, s.stroke / 2, s)], // Stamm endet auf der unteren Linie
+  docks: () => [],
+};
+
+const glyphQuestion: GlyphDef = {
+  char: "?",
+  params: { h, w: R(160, 200, 260) },
+  draw(p, s) {
+    const c = p.w / 2;
+    return [stroke(0, cTop(p, s), ...head2(p, s, s.barHigh * p.h), L(c, mid(s) * p.h), L(c, s.barLow * p.h)), square(c, s.stroke / 2, s)];
+  },
+  docks: () => [],
+};
+
+const glyphHyphen: GlyphDef = { char: "-", params: fixed, draw: (_p, s) => [stroke(0, mid(s), L(140, mid(s)))], docks: () => [] };
+
+const glyphEndash: GlyphDef = { char: "–", params: fixed, draw: (_p, s) => [stroke(0, mid(s), L(280, mid(s)))], docks: () => [] };
+
+/** Klammer: flacher Bogen über die ganze Höhe, Enden über Ober- und Grundlinie hinaus (der Renderer schneidet waagrecht). */
+function paren(s: Style, w: number): Stroke {
+  const H = s.capHeight, m = H / 2, e = 10;
+  return stroke(w, H + e, C(0.35 * w, H, 0, m + 0.3 * H, 0, m), C(0, m - 0.3 * H, 0.35 * w, 0, w, -e));
+}
+
+const glyphParenLeft: GlyphDef = { char: "(", params: fixed, draw: (_p, s) => [paren(s, 110)], docks: () => [] };
+
+const glyphParenRight: GlyphDef = {
+  char: ")",
+  params: fixed,
+  draw: (_p, s) => [mapPts(paren(s, 110), (q) => ({ x: 110 - q.x, y: q.y }))],
+  docks: () => [],
+};
+
+const glyphSlash: GlyphDef = {
+  char: "/",
+  params: fixed,
+  draw(_p, s) {
+    const w = 220, H = s.capHeight, d = capDrop(w, H, s), x = (w * d) / H;
+    return [stroke(-x, -d, L(w + x, H + d))];
+  },
+  docks: () => [],
+};
+
+/** Hohes Häkchen (gerade) für ' und ". */
+const tick = (x: number, s: Style) => stroke(x, s.barHigh, L(x, s.capHeight));
+
+/** Komma-förmiges Anführungszeichen oben („9“); gedreht ergibt es die „6“. */
+const quote9 = (x: number, s: Style) => [square(x, s.capHeight - s.stroke / 2, s), stroke(x + 7, s.capHeight - s.stroke / 2, L(x - 19, s.barHigh))];
+
+const quote6 = (x: number, s: Style) => quote9(x, s).map((st) => mapPts(st, (q) => ({ x: 2 * x - q.x, y: s.capHeight + s.barHigh - q.y })));
+
+const glyphQuoteSingle: GlyphDef = { char: "'", params: fixed, draw: (_p, s) => [tick(s.stroke / 2, s)], docks: () => [] };
+
+const glyphQuoteDbl: GlyphDef = { char: '"', params: fixed, draw: (_p, s) => [tick(s.stroke / 2, s), tick(s.stroke / 2 + 56, s)], docks: () => [] };
+
+const glyphQuoteRight: GlyphDef = { char: "’", params: fixed, draw: (_p, s) => quote9(32, s), docks: () => [] };
+
+const glyphQuoteLeft: GlyphDef = { char: "‘", params: fixed, draw: (_p, s) => quote6(13, s), docks: () => [] };
+
+const glyphQuoteDblLeft: GlyphDef = { char: "“", params: fixed, draw: (_p, s) => [...quote6(13, s), ...quote6(13 + 66, s)], docks: () => [] };
+
+const glyphQuoteSingleBase: GlyphDef = { char: "‚", params: fixed, desc: 130, draw: (_p, s) => comma(32, s), docks: () => [] };
+
+const glyphQuoteDblBase: GlyphDef = { char: "„", params: fixed, desc: 130, draw: (_p, s) => [...comma(32, s), ...comma(32 + 66, s)], docks: () => [] };
+
+/** Winkel für Guillemets: Spitze links auf halber Höhe. */
+const chevron = (x: number, s: Style) => stroke(x + 90, mid(s) + 100, L(x, mid(s)), L(x + 90, mid(s) - 100));
+
+const glyphGuillemetLeft: GlyphDef = { char: "«", params: fixed, draw: (_p, s) => [chevron(0, s), chevron(90, s)], docks: () => [] };
+
+const glyphGuillemetRight: GlyphDef = {
+  char: "»",
+  params: fixed,
+  draw: (_p, s) => [chevron(0, s), chevron(90, s)].map((st) => mapPts(st, (q) => ({ x: 180 - q.x, y: q.y }))),
+  docks: () => [],
+};
+
+const glyphEllipsis: GlyphDef = {
+  char: "…",
+  params: fixed,
+  draw: (_p, s) => [0, 1, 2].map((i) => square(s.stroke / 2 + i * 70, s.stroke / 2, s)),
+  docks: () => [],
+};
+
+/** Liegendes Oval zwischen y und t (Halbkreise links und rechts), linke Kante bei x. */
+function loop(x: number, w: number, y: number, t: number): Stroke {
+  const r = (t - y) / 2, k = KAPPA * r;
+  return closed(stroke(x + r, t, L(x + w - r, t), C(x + w - r + k, t, x + w, t - r + k, x + w, t - r), C(x + w, y + r - k, x + w - r + k, y, x + w - r, y),
+    L(x + r, y), C(x + r - k, y, x, y + r - k, x, y + r), C(x, t - r + k, x + r - k, t, x + r, t)));
+}
+
+const glyphAmpersand: GlyphDef = {
+  char: "&",
+  params: { h, w: R(240, 300, 360) },
+  draw(p, s) {
+    // Schleife oben bis zur oberen Linie, Bein nach rechts unten, Bauch links mit Schwanz bis zur unteren Linie
+    const t = cTop(p, s), y = s.barHigh * p.h, yl = s.barLow * p.h, b = cBot(s), w = p.w, x1 = 30, w1 = 160, r = (t - y) / 2;
+    const lx = x1 + 30, ly = y + r - Math.sqrt(r * r - (lx - x1 - r) ** 2); // Bein beginnt auf der Schleife
+    const run = w - lx, d = capDrop(run, ly, s);
+    return [
+      loop(x1, w1, y, t),
+      stroke(lx, ly, L(w + (run * d) / ly, -d)),
+      stroke(x1 + w1 - 0.6 * r, y + 6, C(x1 + w1 - 120, y - 110, 0, 0.6 * y + 90, 0, 0.48 * y), C(0, 0.2 * y, 50, b, 140, b), C(220, b, w - 20, yl - 90, w - 10, yl)),
+    ];
+  },
+  docks: () => [],
+};
+
+const glyphEuro: GlyphDef = {
+  char: "€",
+  params: { h, w: R(200, 240, 290) },
+  draw(p, s) {
+    const y1 = 0.42 * inkTop(p, s), y2 = 0.58 * inkTop(p, s), x = 40; // Querstriche ragen links 40 über den Bogen
+    return [mapPts(bowlC({ ...p, wb: p.w }, s), moveBy(x, 0)), stroke(0, y1, L(x + 0.6 * p.w, y1)), stroke(0, y2, L(x + 0.6 * p.w, y2))];
+  },
+  docks: () => [],
+};
+
+/** Kleines stehendes Oval (Prozent). */
+function oval(x: number, y0: number, y1: number, w: number): Stroke {
+  const r = w / 2, k = KAPPA * r;
+  return closed(stroke(x, y0 + r, L(x, y1 - r), C(x, y1 - r + k, x + r - k, y1, x + r, y1), C(x + r + k, y1, x + w, y1 - r + k, x + w, y1 - r),
+    L(x + w, y0 + r), C(x + w, y0 + r - k, x + r + k, y0, x + r, y0), C(x + r - k, y0, x, y0 + r - k, x, y0 + r)));
+}
+
+const glyphPercent: GlyphDef = {
+  char: "%",
+  params: fixed,
+  draw(_p, s) {
+    const H = s.capHeight, w = 300, d = capDrop(w, H, s), x = (w * d) / H, b = s.stroke / 2;
+    return [oval(0, s.barHigh - 100, H - b, 90), oval(w - 90, b, s.barLow + 100, 90), stroke(-x, -d, L(w + x, H + d))];
+  },
+  docks: () => [],
+};
+
+const glyphAt: GlyphDef = {
+  char: "@",
+  params: fixed,
+  draw(_p, s) {
+    const a = glyphA.draw({ h: 0.42, w: 150, bar: 1, legL: 0 }, s).map((st) => mapPts(st, moveBy(75, 0.29 * s.capHeight)));
+    return [...glyphO.draw({ h: 1, w: 300 }, s), ...a]; // kleines A mittig im O-Oval
+  },
+  docks: () => [],
+};
+
+const glyphNumber: GlyphDef = {
+  char: "#",
+  params: fixed,
+  draw(_p, s) {
+    const H = s.capHeight, w = 260;
+    return [stroke(70, 0, L(70, H)), stroke(w - 70, 0, L(w - 70, H)), stroke(0, s.barLow, L(w, s.barLow)), stroke(0, s.barHigh, L(w, s.barHigh))];
+  },
+  docks: () => [],
+};
+
+const glyphPlus: GlyphDef = {
+  char: "+",
+  params: fixed,
+  draw: (_p, s) => [stroke(110, mid(s) - 110, L(110, mid(s) + 110)), stroke(0, mid(s), L(220, mid(s)))],
+  docks: () => [],
+};
+
+const glyphEqual: GlyphDef = {
+  char: "=",
+  params: fixed,
+  draw: (_p, s) => [stroke(0, mid(s) - 55, L(220, mid(s) - 55)), stroke(0, mid(s) + 55, L(220, mid(s) + 55))],
+  docks: () => [],
+};
+
+const glyphAsterisk: GlyphDef = {
+  char: "*",
+  params: fixed,
+  draw(_p, s) {
+    const c = 100, r = 100;
+    return [0, 60, 120].map((deg) => {
+      const a = (deg * Math.PI) / 180, dx = r * Math.sin(a), dy = r * Math.cos(a);
+      return stroke(c - dx, mid(s) - dy, L(c + dx, mid(s) + dy));
+    });
+  },
+  docks: () => [],
+};
+
+const glyphSection: GlyphDef = {
+  char: "§",
+  params: fixed,
+  draw(_p, s) {
+    // Kopf wie beim C links hinab in einen Ring auf halber Höhe, aus dem Ring rechts hinab in den Fuß wie beim D
+    const H = s.capHeight, t = H - s.stroke / 2, b = s.stroke / 2, w = 200, c = mid(s), R0 = w / 2, k = KAPPA * R0, r = 0.143 * H, kr = KAPPA * r, rb = 47;
+    return [
+      stroke(0.85 * w, t, L(r, t), C(r - kr, t, 0, t - r + kr, 0, t - r), L(0, c)),
+      closed(stroke(0, c, C(0, c + k, R0 - k, c + R0, R0, c + R0), C(R0 + k, c + R0, w, c + k, w, c), C(w, c - k, R0 + k, c - R0, R0, c - R0), C(R0 - k, c - R0, 0, c - k, 0, c))),
+      stroke(w, c, L(w, b + rb), C(w, b + rb * (1 - KAPPA), w - rb * (1 - KAPPA), b, w - rb, b), L(0, b)),
+    ];
+  },
+  docks: () => [],
+};
+
 /** Ersatz für noch nicht entworfene Zeichen. */
 export const PLACEHOLDER: GlyphDef = {
   char: "?",
@@ -530,6 +763,10 @@ export const GLYPHS: Record<string, GlyphDef> = Object.fromEntries(
     glyphA, glyphAE, glyphB, glyphC, glyphD, glyphE, glyphF, glyphG, glyphH, glyphI, glyphJ, glyphK, glyphL, glyphM, glyphN, glyphO, glyphOE,
     glyphP, glyphQ, glyphR, glyphS, glyphSZ, glyphT, glyphU, glyphUE, glyphV, glyphW, glyphX, glyphY, glyphZ,
     glyph0, glyph1, glyph2, glyph3, glyph4, glyph5, glyph6, glyph7, glyph8, glyph9,
+    glyphPeriod, glyphComma, glyphColon, glyphSemicolon, glyphExclam, glyphQuestion, glyphHyphen, glyphEndash,
+    glyphParenLeft, glyphParenRight, glyphSlash, glyphAmpersand, glyphQuoteSingle, glyphQuoteRight, glyphQuoteDbl,
+    glyphQuoteDblBase, glyphQuoteDblLeft, glyphQuoteSingleBase, glyphQuoteLeft, glyphGuillemetLeft, glyphGuillemetRight,
+    glyphEuro, glyphPercent, glyphAt, glyphNumber, glyphPlus, glyphEqual, glyphAsterisk, glyphSection, glyphEllipsis,
   ].map((g) => [g.char, g]),
 );
 

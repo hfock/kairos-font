@@ -6,6 +6,7 @@ import { FLAECHE_1902 as S } from "../src/style";
 
 const ALL = [..."ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÜẞ"];
 const DIGITS = [..."0123456789"];
+const MARKS = [...".,:;!?-–()/&'’\"„“‚‘«»€%@#+=*§…"]; // Spec M2 §3: Satz-Grundset und Plakat-Zeichen
 const ink = (st: Stroke[]) => st.flatMap((x) => inkPoints(x, S.stroke / 2));
 const kinds = (c: string, p: Partial<Params> = {}) =>
   GLYPHS[c].docks({ ...defaults(GLYPHS[c]), ...p }, S).map((d) => d.kind + ("side" in d ? ":" + d.side : ""));
@@ -22,19 +23,19 @@ test("alle Versalien, Umlaute und ẞ sind entworfen", () => {
   expect(ALL.filter((c) => !GLYPHS[c])).toEqual([]);
 });
 
-test("Ziffern sind entworfen", () => {
-  expect(DIGITS.filter((c) => !GLYPHS[c])).toEqual([]);
+test("Ziffern sowie Satz- und Plakat-Zeichen sind entworfen", () => {
+  expect([...DIGITS, ...MARKS].filter((c) => !GLYPHS[c])).toEqual([]);
 });
 
 test("Tinte bleibt endlich und im Buchstabenfeld (Höhe, x ≥ linker Bezug)", () => {
   const bad = new Set<string>();
-  for (const g of [...[...ALL, ...DIGITS].map((c) => GLYPHS[c]), PLACEHOLDER])
+  for (const g of [...[...ALL, ...DIGITS, ...MARKS].map((c) => GLYPHS[c]), PLACEHOLDER])
     for (const p of variants(g)) {
-      const top = S.capHeight * p.h;
+      const top = S.capHeight * (p.h ?? 1), bottom = -(g.desc ?? 0); // Satzzeichen ohne Höhenregler: volle Höhe; Komma mit Unterlänge
       for (const q of ink(g.draw(p, S))) {
         // Füße und Spitzen reichen bis eine Strichstärke über Grund- und Oberkante hinaus, der Renderer schneidet dort waagrecht ab;
         // die waagrechte Schnittkante flacher Beine (X, Y breit und kurz) ragt dabei bis Strich/2 ÷ sin θ ≈ 1,05 Striche vor x = 0
-        const ok = Number.isFinite(q.x) && Number.isFinite(q.y) && q.y >= -S.stroke && q.y <= top + S.stroke;
+        const ok = Number.isFinite(q.x) && Number.isFinite(q.y) && q.y >= bottom - S.stroke && q.y <= top + S.stroke;
         if (!ok || !(q.x >= -1.1 * S.stroke && q.x < 1000)) bad.add(`${g.char} ${JSON.stringify(p)}`);
       }
     }
@@ -128,4 +129,15 @@ test("J: der Haken läuft nie zurück (Anfang nie unter dem Bogenanfang)", () =>
     const [st] = GLYPHS.J.draw(p, S);
     expect(st.start.y).toBeGreaterThanOrEqual((st.segs[0] as { p: { y: number } }).p.y);
   }
+});
+
+test("Punkt: Quadrat in Strichstärke auf der Grundlinie; Komma und tiefe Anführungszeichen mit Unterlänge 130", () => {
+  const ys = (c: string) => ink(GLYPHS[c].draw(defaults(GLYPHS[c]), S)).map((q) => q.y), xs = (c: string) => ink(GLYPHS[c].draw(defaults(GLYPHS[c]), S)).map((q) => q.x);
+  expect([Math.min(...ys(".")), Math.max(...ys(".")), Math.min(...xs(".")), Math.max(...xs("."))]).toEqual([0, S.stroke, 0, S.stroke]);
+  for (const c of [",", ";", "„", "‚"]) {
+    expect(GLYPHS[c].desc).toBe(130);
+    expect(Math.min(...ys(c))).toBeLessThan(-S.stroke); // reicht wirklich unter die Grundlinie
+    expect(Math.min(...ys(c))).toBeGreaterThanOrEqual(-130);
+  }
+  for (const c of [...".:!?-–'\"’‘“«»…"]) expect(GLYPHS[c].desc).toBeUndefined();
 });
