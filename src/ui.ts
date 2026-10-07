@@ -10,9 +10,9 @@ import { FLAECHE_1902 } from "./style";
 
 type HandleKind = "h" | "w" | "bar" | "foot" | "top";
 
-const BUILTIN = [dieFlaeche, hagen] as unknown as Preset[];
 const OVERLAYS: Record<string, string> = { "die-flaeche": overlayUrl };
 const OVERLAY_KEYS: ReadonlySet<string> = new Set(Object.keys(OVERLAYS));
+const BUILTIN: Preset[] = [dieFlaeche, hagen].map((p) => cleanPreset(p, OVERLAY_KEYS)).filter((p): p is Preset => p !== null);
 const KEY = "kairos.state", PRESETS = "kairos.presets", SVGNS = "http://www.w3.org/2000/svg";
 const LABEL: Record<string, string> = {
   none: "keine",

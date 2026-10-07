@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test";
 import dieFlaeche from "../presets/die-flaeche.json";
+import hagen from "../presets/hagen-aad-fock.json";
 import { cleanPins, cleanPreset, cleanState, type State } from "../src/presets";
 import { FLAECHE_1902 } from "../src/style";
 
@@ -27,6 +28,10 @@ test("cleanPreset: gültige Vorlage bleibt, Text wird NFC, Kaputtes wird abgeleh
   expect(cleanPreset({ ...dieFlaeche, styleValues: { stroke: 1e7 } }, KNOWN)).toBeNull(); // würde die Seite einfrieren
   expect(cleanPreset({ ...dieFlaeche, styleValues: { capHeight: 900 } }, KNOWN)).toBeNull(); // kein Regler
   for (const bad of [null, 5, "x", [], {}]) expect(cleanPreset(bad, KNOWN)).toBeNull();
+});
+
+test("cleanPreset: beide mitgelieferten Vorlagen bestehen die Prüfung", () => {
+  for (const p of [dieFlaeche, hagen]) expect(cleanPreset(p, KNOWN)).not.toBeNull();
 });
 
 test("cleanState: gültiger Stand bleibt, kaputter Speicher führt zum Standard statt zum Absturz", () => {

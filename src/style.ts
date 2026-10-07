@@ -15,7 +15,7 @@ export interface Style {
   apexW: number; // Breite der flachen A-Spitze (Mittellinie)
 }
 
-/** Stil „Fläche 1902", gemessen am Blatt „Die Fläche" Bd. I S. 97 (1 px ≈ 1,38 Einheiten). */
+/** Stil „Fläche 1902“, gemessen am Blatt „Die Fläche“ Bd. I S. 97 (1 px ≈ 1,38 Einheiten). */
 export const FLAECHE_1902: Style = {
   id: "flaeche-1902",
   capHeight: 700,

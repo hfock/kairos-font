@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test";
-import { joinOptions, layoutLine, type Options } from "../src/engine";
+import hagen from "../presets/hagen-aad-fock.json";
+import { joinOptions, layoutLine, type Options, type Pins } from "../src/engine";
 import { FLAECHE_1902 } from "../src/style";
 
 const opts = (o: Partial<Options> = {}): Options => ({ style: FLAECHE_1902, interlock: 0.5, targetWidth: null, pins: { letters: {}, joins: {} }, ...o });
@@ -60,8 +61,22 @@ test("Pin außerhalb des Spielraums mitten im Wort: Hinweis statt Hängen", () =
   const t0 = performance.now();
   const r = layoutLine("DIE", opts({ pins: { letters: { 1: { h: 1e5 } }, joins: {} } }));
   expect(performance.now() - t0).toBeLessThan(500);
-  expect(r.warnings).toContain("Pin bei „DI“ nicht erfüllbar");
+  expect(r.warnings).toEqual(["Pin bei „DI“ nicht erfüllbar"]); // kein Folgehinweis für „IE“: das I trägt seinen Pin nicht
   expect(r.variants[0].glyphs.find((g) => g.index === 1)!.inst.p.h).toBe(1);
+});
+
+test("Buchstaben-Pin widerspricht Verbindungs-Pin: der Buchstabe gewinnt, ein Hinweis nur für dieses Paar", () => {
+  // H0 A1 G2 E3 N4 _5 A6 A7 D8 _9 F10 O11 C12 K13; Vorlage pinnt FO verschachtelt, das hohe O passt nicht unter den F-Arm
+  const r = layoutLine("HAGEN AAD FOCK", opts({ pins: { ...(hagen.pins as unknown as Pins), letters: { 11: { h: 0.85 } } } }));
+  expect(r.warnings).toEqual(["Pin bei „FO“ nicht erfüllbar"]);
+  expect(r.variants[0].glyphs.find((g) => g.index === 11)!.inst.p.h).toBe(0.85);
+});
+
+test("Buchstaben-Pin widerspricht Verbindungs-Pin: der Verbindungs-Pin rechts daneben gilt weiter", () => {
+  const r = layoutLine("DIE FLÄCHE", opts({ pins: { letters: { 5: { h: 0.8 } }, joins: { 4: { type: "nest" }, 5: { type: "none" } } } }));
+  expect(r.warnings).toEqual(["Pin bei „FL“ nicht erfüllbar"]);
+  expect(r.variants[0].joins[5].type).toBe("none");
+  expect(r.variants[0].glyphs.find((g) => g.index === 5)!.inst.p.h).toBe(0.8);
 });
 
 test("Kleinbuchstaben werden in M1 zu Versalien, unbekannte Zeichen zu Platzhaltern", () => {

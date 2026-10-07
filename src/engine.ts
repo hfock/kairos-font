@@ -52,7 +52,8 @@ function expand(n: Node, cur: Letter, o: Options, usePins: boolean, force = fals
   const s = o.style, out: Node[] = [];
   const last = n.placed[n.placed.length - 1], prev = n.placed[n.placed.length - 2];
   const pin = usePins ? o.pins.joins[last.index] : undefined;
-  const lockL = usePins ? o.pins.letters[last.index] : undefined;
+  const pinL = usePins ? o.pins.letters[last.index] : undefined;
+  const lockL = pinL && !conflicts(last.inst.p, pinL) ? pinL : undefined; // schon an der linken Grenze verworfen (Hinweis steht dort)
   const lockR = usePins ? o.pins.letters[cur.index] : undefined;
   const rp0 = { ...defaults(cur.def), ...lockR };
   if (!inRange(cur.def, rp0)) return []; // Pin außerhalb des Spielraums (Vorlage/Speicher): wie unerfüllbar behandeln – sonst riesige Striche
@@ -112,7 +113,8 @@ function searchWord(word: Letter[], o: Options, warn: Set<string>): Node[] {
     let next = beam.flatMap((n) => expand(n, word[k], o, true));
     if (!next.length) {
       warn.add(`Pin bei „${word[k - 1].char}${word[k].char}“ nicht erfüllbar`);
-      next = beam.flatMap((n) => expand(n, word[k], o, false));
+      next = beam.flatMap((n) => expand(n, word[k], { ...o, pins: { letters: o.pins.letters, joins: {} } }, true));
+      if (!next.length) next = beam.flatMap((n) => expand(n, word[k], o, false));
     }
     if (!next.length) next = beam.flatMap((n) => expand(n, word[k], o, false, true));
     beam = prune(next);
