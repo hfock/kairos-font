@@ -6,7 +6,7 @@ export type Range = { min: number; def: number; max: number };
 export type Dock =
   | { kind: "zone"; armY: number } // freie Zone unter einem Arm (rechts), z. B. F
   | { kind: "foot"; end: number } // verlängerbarer Fuß, endet bei x = end
-  | { kind: "terminal"; topEnd: number } // offenes Strichende (C/G-Bogen unten, T-Arm); der Nachbarstamm kommt auf topEnd + armGap + Strich/2
+  | { kind: "terminal"; topEnd: number; y: number } // offenes Strichende auf Höhe y (C/G-Bogen unten, T-Arm); der Nachbarstamm kommt auf topEnd + armGap + Strich/2
   | { kind: "stem"; side: "left" | "right"; x: number; solo?: boolean } // senkrechter Stamm
   | { kind: "leg"; side: "left" | "right"; footX: number } // schräges Bein, Fuß bei footX
   | { kind: "bar"; y: number; x0: number; x1: number; left: boolean; right: boolean }; // Querbalken
@@ -76,7 +76,7 @@ const glyphC: GlyphDef = {
   char: "C",
   params: { h, w: R(180, 226, 280), wb: R(150, 200, 330) },
   draw: (p, s) => [bowlC(p, s)],
-  docks: (p) => [{ kind: "terminal", topEnd: p.w }],
+  docks: (p, s) => [{ kind: "terminal", topEnd: p.w, y: cBot(s) }],
   close: (p, x) => ({ ...p, wb: x }),
 };
 
@@ -137,7 +137,7 @@ const glyphG: GlyphDef = {
     return [{ ...c, segs: [...c.segs, L(p.wb, by), L(0.55 * p.wb, by)] }];
   },
   docks: (p, s) => [
-    { kind: "terminal", topEnd: p.w },
+    { kind: "terminal", topEnd: p.w, y: cBot(s) },
     { kind: "bar", y: barY(p, s), x0: 0.55 * p.wb, x1: p.wb, left: false, right: true },
   ],
   close: (p, x) => ({ ...p, wb: x }),
@@ -207,7 +207,6 @@ const glyphO: GlyphDef = {
   adjust: { left: -10, right: -10 },
 };
 
-
 /** Knoten auf einer Balkenlinie (Griff „Balken“), verbindet nicht mit Nachbarn. */
 const knot = (y: number, x0: number, x1: number): Dock => ({ kind: "bar", y, x0, x1, left: false, right: false });
 
@@ -247,7 +246,7 @@ function cup(p: Params, s: Style, left: number): Stroke {
 const glyphJ: GlyphDef = {
   char: "J",
   params: { h, w: R(150, 190, 260) },
-  draw: (p, s) => [cup(p, s, s.barLow * p.h)], // Haken endet auf der unteren Balkenlinie
+  draw: (p, s) => [cup(p, s, Math.max(s.barLow * p.h, cBot(s) + p.w / 2))], // Haken endet auf der unteren Balkenlinie, nie unter dem Bogenanfang
   docks: () => [], // kein Stamm-Andocken: J + U würde zu „ɯ“
 };
 
@@ -293,7 +292,11 @@ const glyphR: GlyphDef = {
       stroke(0, by, L(p.w * (1 + drop / by), -drop)), // Bein wie beim K; Fuß knapp unter die Grundlinie
     ];
   },
-  docks: (p, s) => [{ kind: "stem", side: "left", x: 0 }, { kind: "leg", side: "right", footX: p.w }, knot(barY(p, s), 0, 0.9 * p.w)],
+  docks: (p, s) => [
+    { kind: "stem", side: "left", x: 0 },
+    ...(p.bar ? [] : [{ kind: "leg", side: "right", footX: p.w } as Dock]), // Knoten unten: Bein zu flach zum Füße-Teilen
+    knot(barY(p, s), 0, 0.9 * p.w),
+  ],
 };
 
 const glyphS: GlyphDef = {
@@ -322,13 +325,13 @@ const glyphSZ: GlyphDef = {
 
 const glyphT: GlyphDef = {
   char: "T",
-  params: { h, w: R(200, 260, 340), top: R(-60, 0, 300) },
+  params: { h, w: R(200, 260, 340), top: R(-50, 0, 300) }, // kürzer: der Stamm käme dem Nachbarstamm beim Teilen zu nah
   draw(p, s) {
     const t = cTop(p, s);
     return [stroke(0, t, L(p.w + p.top, t)), stroke(p.w / 2, 0, L(p.w / 2, t))];
   },
   // Strich teilen: der rechte Arm mündet oben in den Stamm des Nachbarn (TH, TE); der Arm endet schon dort
-  docks: (p, s) => [{ kind: "terminal", topEnd: p.w + p.top - s.armGap - s.stroke / 2 }],
+  docks: (p, s) => [{ kind: "terminal", topEnd: p.w + p.top - s.armGap - s.stroke / 2, y: cTop(p, s) }],
   close: (p) => p,
 };
 
@@ -342,7 +345,7 @@ const glyphU: GlyphDef = {
 const glyphUE: GlyphDef = {
   ...glyphU,
   char: "Ü",
-  draw: (p, s) => [cup(p, s, inkTop(p, s)), ...dots(cTop(p, s), p.w / 4, (3 * p.w) / 4, s)], // Punkte in der Öffnung
+  draw: (p, s) => [...glyphU.draw(p, s), ...dots(cTop(p, s), p.w / 4, (3 * p.w) / 4, s)], // Punkte in der Öffnung
 };
 
 const glyphV: GlyphDef = {
@@ -370,7 +373,7 @@ const glyphX: GlyphDef = {
     const xt = (-c * dt) / (top - y), xb = (c * db) / y; // Enden knapp über Ober- und unter Grundlinie
     return [stroke(xt, top + dt, L(c, y), L(p.w + xb, -db)), stroke(p.w - xt, top + dt, L(c, y), L(-xb, -db))];
   },
-  docks: (p, s) => [knot(barY(p, s), p.w / 2 - 20, p.w / 2 + 20)],
+  docks: (p, s) => [knot(barY(p, s), p.w / 2, p.w / 2)],
 };
 
 const glyphY: GlyphDef = {
@@ -380,7 +383,7 @@ const glyphY: GlyphDef = {
     const top = inkTop(p, s), y = barY(p, s), c = p.w / 2, d = capDrop(c, top - y, s), x = (-c * d) / (top - y);
     return [stroke(x, top + d, L(c, y), L(p.w - x, top + d)), stroke(c, 0, L(c, y))];
   },
-  docks: (p, s) => [knot(barY(p, s), p.w / 2 - 20, p.w / 2 + 20)],
+  docks: (p, s) => [knot(barY(p, s), p.w / 2, p.w / 2)],
 };
 
 const glyphZ: GlyphDef = {

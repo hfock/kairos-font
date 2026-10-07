@@ -26,7 +26,7 @@ function joinCost(j: Join, interlock: number): number {
   return (base === null ? 0 : base - g) + (j.bar ? WEIGHTS.bar - g : 0);
 }
 
-/** Text in Wörter aus Buchstaben zerlegen; M1: Versalien, unbekannte Zeichen → Platzhalter. */
+/** Text in Wörter aus Buchstaben zerlegen; Versalien, unbekannte Zeichen → Platzhalter. */
 function words(text: string, warn: Set<string>): Letter[][] {
   const out: Letter[][] = [];
   let cur: Letter[] = [];

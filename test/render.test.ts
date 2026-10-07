@@ -17,6 +17,16 @@ test("SVG: ein Gruppe je Buchstabe, ein Pfad je Strich, keine NaN", () => {
   expect(svg).toMatch(/<clipPath id="kairos-zeile"><rect x="-100000" y="0" width="200000" height="700"\/><\/clipPath><g clip-path="url\(#kairos-zeile\)">/);
 });
 
+test("kürzere Buchstaben mit Ink über der eigenen Oberkante werden dort abgeschnitten, die übrigen nicht", () => {
+  // FV: V verschachtelt auf 497 Einheiten, seine schrägen Enden ragen darüber
+  const fv = layoutLine("FV", { style: S, interlock: 0.5, targetWidth: null, pins: { letters: {}, joins: {} } }).variants[0];
+  expect(fv.joins[0].type).toBe("nest");
+  const svg = svgString(fv, S, { ink: "#000", paper: null });
+  expect(svg).toContain('<clipPath id="kairos-h4970"><rect x="-1000" y="0" width="3000" height="497"/></clipPath>');
+  expect(svg).toMatch(/<g data-i="1" transform="translate\([^)]+\)" clip-path="url\(#kairos-h4970\)">/);
+  expect(svgString(v, S, { ink: "#000", paper: null })).not.toContain("kairos-h"); // verschachteltes L in DIE FLÄCHE: nichts ragt über
+});
+
 test("Export ohne Bedienelemente; transparent ohne Papier", () => {
   const svg = svgString(v, S, { ink: "#000", paper: null });
   expect(svg).not.toMatch(/<rect [^>]*fill=/); // kein Papier, keine Klickflächen (das Zeilenband hat keine Füllung)

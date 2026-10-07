@@ -6,14 +6,15 @@ import { FLAECHE_1902 as S } from "../src/style";
 
 const ALL = [..."ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÜẞ"];
 const ink = (st: Stroke[]) => st.flatMap((x) => inkPoints(x, S.stroke / 2));
+const kinds = (c: string, p: Partial<Params> = {}) =>
+  GLYPHS[c].docks({ ...defaults(GLYPHS[c]), ...p }, S).map((d) => d.kind + ("side" in d ? ":" + d.side : ""));
 
-/** Start-, Minimal- und Maximalwerte je Regler einzeln, dazu alle auf Minimum bzw. Maximum. */
+/** Alle Kombinationen aus Minimal-, Start- und Maximalwert jedes Reglers. */
 function variants(g: GlyphDef): Params[] {
-  const base = defaults(g), out = [base];
-  for (const [k, r] of Object.entries(g.params)) out.push({ ...base, [k]: r.min }, { ...base, [k]: r.max });
-  out.push(Object.fromEntries(Object.entries(g.params).map(([k, r]) => [k, r.min])));
-  out.push(Object.fromEntries(Object.entries(g.params).map(([k, r]) => [k, r.max])));
-  return out;
+  return Object.entries(g.params).reduce<Params[]>(
+    (out, [k, r]) => out.flatMap((p) => [...new Set([r.min, r.def, r.max])].map((v) => ({ ...p, [k]: v }))),
+    [{}],
+  );
 }
 
 test("alle Versalien, Umlaute und ẞ sind entworfen", () => {
@@ -25,16 +26,17 @@ test("Tinte bleibt endlich und im Buchstabenfeld (Höhe, x ≥ linker Bezug)", (
   for (const g of [...ALL.map((c) => GLYPHS[c]), PLACEHOLDER])
     for (const p of variants(g)) {
       const top = S.capHeight * p.h;
-      for (const q of ink(g.draw(p, S)))
-        // Füße und Spitzen reichen bis eine Strichstärke über Grund- und Oberlinie hinaus, der Renderer schneidet dort waagrecht ab
-        if (!(Number.isFinite(q.x) && Number.isFinite(q.y) && q.y >= -S.stroke && q.y <= top + S.stroke && q.x >= -S.stroke && q.x < 1000))
-          bad.add(`${g.char} ${JSON.stringify(p)}`);
+      for (const q of ink(g.draw(p, S))) {
+        // Füße und Spitzen reichen bis eine Strichstärke über Grund- und Oberkante hinaus, der Renderer schneidet dort waagrecht ab;
+        // sichtbar bleibt das Band dazwischen, dort ragt die Schnittkante flacher Beine (X tief, breit, kurz) bis 2 Striche vor
+        const ok = Number.isFinite(q.x) && Number.isFinite(q.y) && q.y >= -S.stroke && q.y <= top + S.stroke;
+        if (!ok || (q.y >= 0 && q.y <= top && !(q.x >= -2 * S.stroke && q.x < 1000))) bad.add(`${g.char} ${JSON.stringify(p)}`);
+      }
     }
   expect([...bad]).toEqual([]);
 });
 
 test("Andockstellen der Vorlage-Buchstaben", () => {
-  const kinds = (c: string) => GLYPHS[c].docks(defaults(GLYPHS[c]), S).map((d) => d.kind + ("side" in d ? ":" + d.side : ""));
   expect(kinds("F")).toContain("zone");
   expect(kinds("L")).toContain("foot");
   expect(kinds("E")).toContain("foot");
@@ -80,11 +82,11 @@ test("Füße von A, Ä und K reichen knapp unter die Grundlinie (waagrechter Sch
 });
 
 test("Andockstellen der übrigen Versalien", () => {
-  const kinds = (c: string) => GLYPHS[c].docks(defaults(GLYPHS[c]), S).map((d) => d.kind + ("side" in d ? ":" + d.side : ""));
   expect(kinds("T")).toEqual(["terminal"]); // Arm mündet in den Nachbarstamm (TH, TE)
   expect(kinds("Z")).toEqual(["foot"]);
   expect(kinds("Q")).toEqual(["foot"]);
   expect(kinds("R")).toEqual(["stem:left", "leg:right", "bar"]);
+  expect(kinds("R", { bar: 1 })).toEqual(["stem:left", "bar"]); // Knoten unten: Bein zu flach zum Füße-Teilen
   expect(kinds("U")).toEqual(["stem:left", "stem:right"]);
   expect(kinds("Ü")).toEqual(["stem:left", "stem:right"]);
   expect(kinds("M")).toEqual(["stem:left", "stem:right", "bar"]);
@@ -113,5 +115,12 @@ test("Ö und Ü: Punkt-Quadrate auf der Oberlinie; Ö-Punkte halten armGap Absta
   for (const w of [210, 240, 300]) {
     const st = GLYPHS["Ö"].draw({ h: 1, w }, S);
     expect(minDist(ink(st.slice(0, 1)), 0, ink(st.slice(1)), 0, 100)).toBeGreaterThanOrEqual(S.armGap - 1);
+  }
+});
+
+test("J: der Haken läuft nie zurück (Anfang nie unter dem Bogenanfang)", () => {
+  for (const p of variants(GLYPHS.J)) {
+    const [st] = GLYPHS.J.draw(p, S);
+    expect(st.start.y).toBeGreaterThanOrEqual((st.segs[0] as { p: { y: number } }).p.y);
   }
 });

@@ -93,3 +93,11 @@ test("c Strich teilen TH: der T-Arm endet auf dem H-Stamm (< 0,5 Einheiten), Pin
   const long = apply({ type: "share", sub: "term" }, inst("T", { top: 120 }), GLYPHS.H, defaults(GLYPHS.H), S)!;
   expect(Math.abs(GLYPHS.T.params.w.def + 120 - long.dx)).toBeLessThan(0.5);
 });
+
+test("c Strich teilen nur, wo der Nachbar auf Höhe des Strichendes einen Stamm hat", () => {
+  const types = (a: string, b: string, rp = {}) => joinsFor(inst(a), inst(b, rp)).map((j) => j.sub ?? j.type);
+  for (const [a, b] of [["C", "U"], ["G", "U"], ["C", "Ü"]]) expect(types(a, b)).toEqual(["none"]); // U-Stamm endet über dem Bogen
+  expect(types("T", "L", { h: 0.7 })).toEqual(["none"]); // T-Arm hinge über dem kürzeren L in der Luft
+  expect(types("T", "U")).toEqual(["none", "term"]);
+  expect(types("C", "H")).toEqual(["none", "term"]);
+});

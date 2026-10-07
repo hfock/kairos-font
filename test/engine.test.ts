@@ -87,9 +87,9 @@ test("Kleinbuchstaben werden zu Versalien, unbekannte Zeichen zu Platzhaltern", 
 });
 
 test("ganzes Versal-Alphabet ohne Platzhalter; ß wird zu ẞ", () => {
-  const r = layoutLine("JUWELIER QUARZ XYLOPHON BÖSE STRAßE", opts());
+  const r = layoutLine("VICTOR JAGT ZWÖLF BOXKÄMPFER QUER ÜBER DEN GROßEN SYLTER DEICH", opts());
   expect(r.warnings).toEqual([]);
-  expect(r.variants[0].glyphs.map((g) => g.char).join("")).toBe("JUWELIERQUARZXYLOPHONBÖSESTRAẞE");
+  expect(r.variants[0].glyphs.map((g) => g.char).join("")).toBe("VICTORJAGTZWÖLFBOXKÄMPFERQUERÜBERDENGROẞENSYLTERDEICH");
 });
 
 test("e Zielbreite: erreichbar → passt auf ±2, unerreichbar → Hinweis", () => {

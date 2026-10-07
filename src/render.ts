@@ -39,8 +39,16 @@ export function svgString(l: Layout, s: Style, o: RenderOpts): string {
   out.push(`<g id="ink" ${flip} fill="none" stroke="${o.ink}" stroke-width="${s.stroke}" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4">`);
   // Zeilenband in Schriftkoordinaten: schräge Füße und Spitzen enden waagrecht an Grund- und Oberlinie
   out.push(`<clipPath id="kairos-zeile"><rect x="-100000" y="0" width="200000" height="${H}"/></clipPath><g clip-path="url(#kairos-zeile)">`);
+  const clips = new Set<number>();
   for (const g of l.glyphs) {
-    out.push(`<g data-i="${g.index}" transform="translate(${r1(g.x)} 0)">`);
+    // kürzere Buchstaben zusätzlich an der eigenen Oberkante abschneiden (schräge Enden V X Y, Gehrungsspitzen M N);
+    // die Kennung hängt nur an der Höhe, so stören sich auch mehrere eingebettete SVGs nicht
+    const top = r1(H * g.inst.p.h), id = Math.round(top * 10), clip = top < H && g.inst.ink.some((q) => q.y > top + 0.5);
+    if (clip && !clips.has(id)) {
+      clips.add(id);
+      out.push(`<clipPath id="kairos-h${id}"><rect x="-1000" y="0" width="3000" height="${top}"/></clipPath>`);
+    }
+    out.push(`<g data-i="${g.index}" transform="translate(${r1(g.x)} 0)"${clip ? ` clip-path="url(#kairos-h${id})"` : ""}>`);
     for (const st of g.inst.strokes) out.push(`<path d="${pathData(st)}"/>`);
     out.push(`</g>`);
   }

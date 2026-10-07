@@ -191,7 +191,8 @@ function renderLetter() {
   joinSelect($<HTMLSelectElement>("joinLeft"), g.index - 1);
   joinSelect($<HTMLSelectElement>("joinRight"), g.index);
   $("barRight").checked = !!(state.pins.joins[g.index]?.bar ?? layout.joins[g.index]?.bar);
-  $("barRight").disabled = joinOptions(layout, g.index).length === 0;
+  // Balken verbinden geht nur, wenn der eigene Balken bis an die rechte Seite reicht (Knoten von B M P R W X Y verbinden nie)
+  $("barRight").disabled = joinOptions(layout, g.index).length === 0 || !g.inst.docks.some((d) => d.kind === "bar" && d.right);
 }
 
 /** Auswahlliste der möglichen Verbindungen an einer Grenze; Auswahl = Pin. */

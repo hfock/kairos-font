@@ -29,8 +29,9 @@ export function joinsFor(l: Inst, r: Inst): Join[] {
   const out: Join[] = [{ type: "none" }];
   if (dock(l, "zone") && l.def.cover) out.push({ type: "nest" });
   if (dock(l, "foot") && l.def.reach && dock(r, "leg", "left") && r.def.lift) out.push({ type: "underrun" });
-  const stemL = dock(r, "stem", "left");
-  if (dock(l, "terminal") && l.def.close && stemL) out.push({ type: "share", sub: "term" });
+  const stemL = dock(r, "stem", "left"), term = dock(l, "terminal");
+  // Strichende muss auf Höhe eines echten Stamms treffen: nicht am U-Bogen, nicht über einem kürzeren Nachbarn
+  if (term && l.def.close && stemL && r.prof.left[Math.floor(term.y / BIN)] <= stemL.x) out.push({ type: "share", sub: "term" });
   if (dock(l, "stem", "right") && stemL && !stemL.solo) out.push({ type: "share", sub: "stem" });
   if (dock(l, "leg", "right") && dock(r, "leg", "left")) out.push({ type: "share", sub: "leg" });
   return out;
