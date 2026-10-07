@@ -39,6 +39,21 @@ Am Foto nachgemessen bzw. im Prototyp geklärt; die Spec nannte hier Startwerte 
 | Overlay `{src, x, y, scale}` | `{src, x, y, w, h}`, Vorlagen optional mit `styleValues` | direkt SVG-Maße; Feinheiten-Regler bleiben in Vorlagen erhalten |
 | – | Regler „Wortabstand“ unter Feinheiten | Name aus drei Wörtern braucht ihn |
 
+### Während der Umsetzung entschieden
+
+| Spec/Plan | Umsetzung | Grund |
+|---|---|---|
+| Andockstellen (Spec 5.3: `freeZone{box}`, `foot{maxExtend}` …) | `zone{armY}`, `foot{end}`, `terminal{topEnd}`, `stem{side,x,solo}`, `leg{footX}`, `bar{y,x0,x1,left,right}` | Engine braucht nur diese Maße |
+| Regel c: Bogen, Stamm oder Bein → Stamm oder Bein | nur Bogen→Stamm, Stamm→Stamm, Bein→Bein | deckt alle Spec-Beispiele (CH, CK, GE, HE, NE, AA) |
+| Regel d (Plan: Lücke ≤ Wortabstand) | Lücke zwischen den Tinten ≤ Buchstabenabstand + 1 (Spec 5.4) | sonst hängt die AA-Verbindung am Wortabstand-Regler |
+| Bewertung „Löcher“ (Spec 5.5) | in M1 weggelassen | Referenztest ohne sie erfüllt; kommt mit Stapeln/Einschreiben |
+| Pins sind hart (Spec 5.6) | gepinnter oberer F-Arm gilt immer: Regeln verlängern ihn nicht, die Armkürzung lässt ihn stehen | Handarbeit vor Automatik |
+| Buchstaben-Pin widerspricht Verbindungs-Pin | Buchstaben-Pin gewinnt; ein Hinweis nennt das Paar, der Rest wird gesetzt | der zuletzt gezogene Griff soll wirken (Spec 7) |
+| Regel e Zielbreite | ein gemeinsamer Schritt für alle freien Breiten, halbiert, wenn eine Verbindung reißen würde (höchstens 8 Runden); danach Rangliste + Gewicht `deviation` × Abweichung; Hinweis, wenn Variante 1 mehr als 2 Einheiten verfehlt | einfache Näherung; ein Paar mit engem Spielraum bremst alle (geparkt) |
+| Vorlagen und Speicher (Spec 7) | Pins außerhalb des Spielraums → Hinweis + Startwerte (Prüfung in der Engine); Stilwerte nur im Bereich der Feinheiten-Regler; Text wird NFC | Vertrauensgrenze an einer Stelle |
+| Füße und Spitzen waagrecht | nur durch den Clip im Renderer (Band Grundlinie … Versalhöhe); die Skelette von A, Ä und K ragen unter die Grundlinie | **M2: der Font-Build muss an Grund- und Oberlinie schneiden** |
+| Verbindungs-Menü | zeigt die grundsätzlich möglichen Verbindungen; eine nicht erfüllbare Wahl ergibt einen Hinweis | Spec 5.6 |
+
 ## Dateistruktur
 
 | Datei | Aufgabe | Aufgabe Nr. |

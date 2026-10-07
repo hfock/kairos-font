@@ -24,6 +24,8 @@ Display-Schrift im Duktus der Wiener Moderne um 1902 (Vorlage: Schriftzug „DIE
 | `src/glyphs.ts` | Buchstaben als Skelette mit Reglern und Andockstellen |
 | `src/rules.ts` | Verbindungen a–e, Kollision, Armkürzung |
 | `src/engine.ts` | Strahlsuche, Bewertung (`WEIGHTS`), Pins, Zielbreite |
+| `src/presets.ts` | Prüfung von Vorlagen und Browser-Speicher |
 | `src/render.ts` | Layout → SVG |
 | `src/ui.ts` + `index.html` | Oberfläche |
 | `presets/` | mitgelieferte Vorlagen |
+| `tools/` | Prüfblatt (`sheet.ts`), Referenz-Overlay (`overlay.py`) |
