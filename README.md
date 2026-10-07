@@ -44,4 +44,4 @@ Display-Schrift im Duktus der Wiener Moderne um 1902 (Vorlage: Schriftzug „DIE
 ## Bekannte Grenzen
 
 - Wortabstand: das Leerzeichen ist fest. Die App setzt Wörter nach der Tinte, der Font nach den Glyphenkästen; an offenen Seiten (etwa „AUF ALLE“, „DA VOR“) steht der Font bis zu ~170 Einheiten weiter.
-- Verbindungen: der Font entscheidet von links nach rechts, die Engine sucht die beste Lösung; selten weicht das ab (etwa „VARIATIONSKOEFFIZIENT“). Zweimal verschachteln (FF vor Satzzeichen) kann der Font nicht.
+- Verbindungen: der Font entscheidet von links nach rechts, die Engine sucht die beste Lösung; selten weicht das ab (etwa „VARIATIONSKOEFFIZIENT“). Zweimal verschachteln (FF vor manchen Satzzeichen) kann der Font nicht.

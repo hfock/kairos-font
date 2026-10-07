@@ -1365,7 +1365,7 @@ const NAMES: Record<string, string> = {
   "(": "parenleft", ")": "parenright", "/": "slash", "&": "ampersand", "'": "quotesingle", "’": "quoteright", '"': "quotedbl",
   "„": "quotedblbase", "“": "quotedblleft", "‚": "quotesinglbase", "‘": "quoteleft", "«": "guillemotleft", "»": "guillemotright",
   "€": "Euro", "%": "percent", "@": "at", "#": "numbersign", "+": "plus", "=": "equal", "*": "asterisk", "§": "section", "…": "ellipsis",
-  "": "H_A_F",
+  "\uE000": "H_A_F",
 };
 /** Glyphenname nach Adobe Glyph List; A–Z heißen wie ihr Zeichen. */
 export const glyphName = (c: string) => NAMES[c] ?? c;

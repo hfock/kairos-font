@@ -23,7 +23,7 @@ Dazu kommen, in App und Font:
 - main `6eda0e5`: Engine, App, 30 Buchstaben (A–Z, ÄÖÜ, ẞ), 61 Tests.
 - Formen und Regeln leben in TypeScript (`src/glyphs.ts`, `src/rules.ts`, `src/engine.ts`). Der Font übernimmt sie, statt sie nachzubauen.
 - Die Engine verbindet bei Verschränkung 0,5 paarweise (Stand `6eda0e5`):
-  - verschachteln: 28 Paare (F vor allen Buchstaben außer F, X, Y)
+  - verschachteln: 28 Paare (F vor allen Buchstaben außer X, Y)
   - unterfahren: 8 Paare (E, L, Q, Z vor A, Ä)
   - Bogen- oder Armende in den Stamm: 44 Paare (C, G, T vor Buchstaben mit Stamm links)
   - In Dreierfolgen F + X + Z unterbleibt das Verschachteln in 108 von 900 Fällen, in 24 kürzt die Engine den oberen F-Arm vor dem dritten Buchstaben.
