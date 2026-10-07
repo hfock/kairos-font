@@ -82,7 +82,8 @@ def build() -> None:
     ufo = ufoLib2.Font()
     i = ufo.info
     i.familyName, i.styleName, i.postscriptFontName = info["family"], info["style"], "KAIROSFont-Regular"
-    i.versionMajor, i.versionMinor = 0, 2
+    i.versionMajor, i.versionMinor = 0, 200  # 0.200 = Version 0.2 (UFO zählt Tausendstel)
+    i.openTypeNameVersion = f"Version {info['version']}"  # Zeitstempel dahinter: jeder Build ist für macOS eine neue Fassung
     i.openTypeNameUniqueID = f"KAIROSFont-Regular {info['version']}"  # je Build neu: macOS erkennt die neue Fassung
     i.unitsPerEm, i.capHeight, i.xHeight = info["unitsPerEm"], info["capHeight"], info["capHeight"]
     i.ascender, i.descender = info["ascender"], info["descender"]
