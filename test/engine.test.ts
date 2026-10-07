@@ -72,6 +72,13 @@ test("Buchstaben-Pin widerspricht Verbindungs-Pin: der Buchstabe gewinnt, ein Hi
   expect(r.variants[0].glyphs.find((g) => g.index === 11)!.inst.p.h).toBe(0.85);
 });
 
+test("verworfener Arm-Pin des vorletzten Buchstabens: kein Folgehinweis, Verbindungs-Pin danach gilt", () => {
+  // F4 trägt top 300 (außerhalb des Spielraums) nicht; die Armkürzung vor dem Ä muss trotzdem greifen
+  const r = layoutLine("DIE FLÄCHE", opts({ pins: { letters: { 4: { top: 300 } }, joins: { 4: { type: "nest" }, 5: { type: "underrun" } } } }));
+  expect(r.warnings).toEqual(["Pin bei „F“ nicht erfüllbar"]);
+  expect(r.variants[0].joins[5].type).toBe("underrun");
+});
+
 test("Buchstaben-Pin widerspricht Verbindungs-Pin: der Verbindungs-Pin rechts daneben gilt weiter", () => {
   const r = layoutLine("DIE FLÄCHE", opts({ pins: { letters: { 5: { h: 0.8 } }, joins: { 4: { type: "nest" }, 5: { type: "none" } } } }));
   expect(r.warnings).toEqual(["Pin bei „FL“ nicht erfüllbar"]);

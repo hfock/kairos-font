@@ -10,6 +10,7 @@ export type RenderOpts = {
   interactive?: boolean; // Klickflächen + Auswahl (nur Vorschau, nie Export)
   selected?: number | null;
   pinned?: number[];
+  pinnedJoins?: number[]; // Grenzen mit Verbindungs-Pin, Index des linken Buchstabens
   overlay?: Overlay | null;
 };
 
@@ -34,11 +35,18 @@ export function svgString(l: Layout, s: Style, o: RenderOpts): string {
       if (o.pinned?.includes(g.index)) out.push(`<circle class="pin" cx="${r1((minX + maxX) / 2)}" cy="${-m / 2}" r="8" fill="#b03a2e" stroke="none"/>`);
       out.push(`</g>`);
     }
+    // Verbindungs-Pins: Raute unter der Grenze zwischen zwei Buchstaben
+    for (const i of o.pinnedJoins ?? []) {
+      const a = l.glyphs.find((g) => g.index === i), b = l.glyphs.find((g) => g.index === i + 1);
+      if (!a || !b) continue;
+      const cx = r1((a.x + a.inst.prof.maxX + b.x + b.inst.prof.minX) / 2), cy = -m / 2;
+      out.push(`<path class="pinj" d="M${cx} ${cy - 9}L${cx + 9} ${cy}L${cx} ${cy + 9}L${cx - 9} ${cy}Z" fill="#b03a2e" stroke="none"/>`);
+    }
     out.push(`</g>`);
   }
   out.push(`<g id="ink" ${flip} fill="none" stroke="${o.ink}" stroke-width="${s.stroke}" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4">`);
   // Zeilenband in Schriftkoordinaten: schräge Füße und Spitzen enden waagrecht an Grund- und Oberlinie
-  out.push(`<clipPath id="kairos-zeile"><rect x="-100000" y="0" width="200000" height="${H}"/></clipPath><g clip-path="url(#kairos-zeile)">`);
+  out.push(`<clipPath id="kairos-zeile"><rect x="-10000000" y="0" width="20000000" height="${H}"/></clipPath><g clip-path="url(#kairos-zeile)">`);
   const clips = new Set<number>();
   for (const g of l.glyphs) {
     // kürzere Buchstaben zusätzlich an der eigenen Oberkante abschneiden (schräge Enden V X Y, Gehrungsspitzen M N);

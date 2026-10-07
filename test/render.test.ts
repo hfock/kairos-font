@@ -14,7 +14,7 @@ test("SVG: ein Gruppe je Buchstabe, ein Pfad je Strich, keine NaN", () => {
   expect(svg).not.toContain("NaN");
   expect(svg).toContain(`viewBox="${Math.round((v.minX - 60) * 10) / 10} -60 `);
   expect(svg).toContain('<g id="ink" transform="matrix(1 0 0 -1 0 700)"'); // y-Achse gespiegelt
-  expect(svg).toMatch(/<clipPath id="kairos-zeile"><rect x="-100000" y="0" width="200000" height="700"\/><\/clipPath><g clip-path="url\(#kairos-zeile\)">/);
+  expect(svg).toMatch(/<clipPath id="kairos-zeile"><rect x="-10000000" y="0" width="20000000" height="700"\/><\/clipPath><g clip-path="url\(#kairos-zeile\)">/);
 });
 
 test("kürzere Buchstaben mit Ink über der eigenen Oberkante werden dort abgeschnitten, die übrigen nicht", () => {
@@ -46,4 +46,21 @@ test("Vorschau: Klickflächen, Auswahl, Pin-Marke, Overlay", () => {
   expect(svg).toMatch(/<g data-i="4"[^>]*><rect class="sel"/); // Auswahl sitzt beim richtigen Buchstaben
   expect(svg).toMatch(/<g data-i="5"[^>]*><rect class="hit"[^>]*\/><circle class="pin"/);
   expect(svg).toMatch(/class="hits"[\s\S]*id="ink"/); // Klickflächen liegen unter der Tinte
+});
+
+test("Vorschau: Verbindungs-Pins bekommen eine Raute unter der Grenze, Export nicht", () => {
+  const svg = svgString(v, S, { ink: "#000", paper: "#fff", interactive: true, pinnedJoins: [4, 7, 3] }); // 3 = Wortgrenze: keine Marke
+  expect(svg.match(/class="pinj"/g)!.length).toBe(2);
+  const f = v.glyphs.find((g) => g.index === 4)!, l = v.glyphs.find((g) => g.index === 5)!;
+  const cx = Math.round(((f.x + f.inst.prof.maxX + l.x + l.inst.prof.minX) / 2) * 10) / 10;
+  expect(svg).toContain(`<path class="pinj" d="M${cx} -39L`);
+  expect(svgString(v, S, { ink: "#000", paper: null, pinnedJoins: [4] })).not.toContain("pinj");
+});
+
+test("Zeilenband reicht auch für sehr lange Zeilen", () => {
+  const long = layoutLine("HAGEN AAD FOCK ".repeat(40), { style: S, interlock: 0.5, targetWidth: null, pins: { letters: {}, joins: {} } }).variants[0];
+  expect(long.maxX).toBeGreaterThan(100000); // ~560 Zeichen
+  const [, bx, bw] = svgString(long, S, { ink: "#000", paper: null }).match(/id="kairos-zeile"><rect x="([-\d.]+)" y="0" width="([\d.]+)"/)!.map(Number);
+  expect(bx).toBeLessThanOrEqual(long.minX);
+  expect(bx + bw).toBeGreaterThanOrEqual(long.maxX);
 });

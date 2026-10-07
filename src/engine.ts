@@ -68,7 +68,8 @@ function expand(n: Node, cur: Letter, o: Options, usePins: boolean, force = fals
     const rx = last.x + res.dx, r = instance(cur.def, res.rp, s);
     const l0 = lp === last.inst.p ? last.inst : instance(last.inst.def, lp, s);
     const l = lockL?.top === undefined ? trimTop(l0, last.x, r, rx, s) : l0;
-    const prevTop = usePins && prev ? o.pins.letters[prev.index]?.top : undefined;
+    const pinP = usePins && prev ? o.pins.letters[prev.index] : undefined;
+    const prevTop = pinP && !conflicts(prev!.inst.p, pinP) ? pinP.top : undefined; // wie lockL: nur ein Pin, den der Buchstabe wirklich trägt
     const p = prev && (prevTop === undefined ? trimTop(prev.inst, prev.x, r, rx, s) : prev.inst);
     if (!force && j.type !== "share" && collides(l, last.x, r, rx, s)) continue;
     if (!force && prev && collides(p!, prev.x, r, rx, s)) continue;

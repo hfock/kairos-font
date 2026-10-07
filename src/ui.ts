@@ -2,7 +2,7 @@ import dieFlaeche from "../presets/die-flaeche.json";
 import hagen from "../presets/hagen-aad-fock.json";
 import overlayUrl from "../reference/die-flaeche-overlay.jpg";
 import { joinOptions, layoutLine, type Layout, type Placed } from "./engine";
-import type { Params } from "./glyphs";
+import type { Dock, Params } from "./glyphs";
 import { svgString, type Overlay } from "./render";
 import type { Join } from "./rules";
 import { cleanPreset, cleanState, type Preset, type State } from "./presets";
@@ -94,6 +94,7 @@ function update() {
   state.variant = Math.max(0, Math.min(state.variant, variants.length - 1));
   layout = variants[state.variant] ?? null;
   $("status").textContent = res.warnings.join(" · ");
+  $("target").max = String(Math.max(8000, 600 * [...state.text].length)); // ~600 Einheiten je Zeichen reichen für jede Breite
   renderVariants();
   renderPreview();
   renderLetter();
@@ -115,6 +116,7 @@ function renderPreview() {
     interactive: true,
     selected: state.selected,
     pinned: Object.keys(state.pins.letters).map(Number),
+    pinnedJoins: Object.keys(state.pins.joins).map(Number),
     overlay,
   });
   const g = layout.glyphs.find((q) => q.index === state.selected);
@@ -157,7 +159,15 @@ function drag(e: PointerEvent, start: Placed, kind: HandleKind) {
   e.stopPropagation();
   const i = start.index, def = start.inst.def, s = state.style;
   const clamp = (k: string, v: number) => Math.min(def.params[k].max, Math.max(def.params[k].min, v));
+  // höchstens einmal je Bildschirmbild neu setzen: mit Zielbreite dauert ein Durchlauf bis ~90 ms
+  let frame = 0, last: PointerEvent | null = null;
   const move = (ev: PointerEvent) => {
+    last = ev;
+    if (!frame) frame = requestAnimationFrame(step);
+  };
+  const step = () => {
+    frame = 0;
+    const ev = last!;
     const g = layout?.glyphs.find((q) => q.index === i);
     if (!g) return;
     const pt = fontPoint(ev), x = pt.x - g.x, p = g.inst.p;
@@ -173,6 +183,10 @@ function drag(e: PointerEvent, start: Placed, kind: HandleKind) {
     update();
   };
   const up = () => {
+    if (frame) {
+      cancelAnimationFrame(frame);
+      step(); // letzte Position nicht verlieren
+    }
     removeEventListener("pointermove", move);
     removeEventListener("pointerup", up);
     removeEventListener("pointercancel", up);
@@ -191,8 +205,11 @@ function renderLetter() {
   joinSelect($<HTMLSelectElement>("joinLeft"), g.index - 1);
   joinSelect($<HTMLSelectElement>("joinRight"), g.index);
   $("barRight").checked = !!(state.pins.joins[g.index]?.bar ?? layout.joins[g.index]?.bar);
-  // Balken verbinden geht nur, wenn der eigene Balken bis an die rechte Seite reicht (Knoten von B M P R W X Y verbinden nie)
-  $("barRight").disabled = joinOptions(layout, g.index).length === 0 || !g.inst.docks.some((d) => d.kind === "bar" && d.right);
+  // Balken verbinden nur, wenn beide Balken bis an die Grenze reichen und auf derselben Linie liegen (Knoten von B M P R W X Y verbinden nie)
+  const bar = (q: Placed | undefined, side: "left" | "right") =>
+    q?.inst.docks.find((d): d is Extract<Dock, { kind: "bar" }> => d.kind === "bar" && d[side]);
+  const a = bar(g, "right"), b = bar(layout.glyphs.find((q) => q.index === g.index + 1), "left");
+  $("barRight").disabled = !a || !b || Math.abs(a.y - b.y) > 0.5;
 }
 
 /** Auswahlliste der möglichen Verbindungen an einer Grenze; Auswahl = Pin. */
