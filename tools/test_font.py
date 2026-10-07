@@ -97,7 +97,7 @@ def main() -> None:
             diff = pathops.op(want_ink, grow(got_ink, 1.5), pathops.PathOp.DIFFERENCE).area + pathops.op(got_ink, grow(want_ink, 1.5), pathops.PathOp.DIFFERENCE).area
             check(diff <= 0.01 * want_ink.area, f"„{e['text']}“: Tintenfläche weicht um {diff / want_ink.area:.2%} ab")
 
-    print(f"{len(data['glyphs'])} Glyphen, {len(data['kerning'])} Unterschneidungen, {len(data['expect'])} Sollwerte geprüft")
+    print(f"{len(data['expect'])} Sollwerte geprüft ({len(data['glyphs'])} Glyphen, {len(data['kerning'])} Unterschneidungen im Font)")
     if fails:
         print("\n".join(f"✗ {f}" for f in fails))
         sys.exit(1)
