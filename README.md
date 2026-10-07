@@ -11,7 +11,7 @@ Display-Schrift im Duktus der Wiener Moderne um 1902 (Vorlage: Schriftzug „DIE
 
 | Befehl | Wirkung |
 |---|---|
-| `bun run dev` | App auf http://localhost:3457, Font-Probe auf http://localhost:3457/font |
+| `bun run dev` | App auf http://localhost:3457, Font-Probe auf http://localhost:3457/font (nach `bun run font`) |
 | `bun test` | alle Prüfungen |
 | `bun run typecheck` | TypeScript prüfen |
 | `bun run sheet` | Prüfblätter nach `out/` (PNG, wenn Inkscape installiert ist) |
@@ -39,4 +39,4 @@ Display-Schrift im Duktus der Wiener Moderne um 1902 (Vorlage: Schriftzug „DIE
 
 - Installieren: `dist/KAIROSFont-Regular.otf` per Doppelklick in die Schriftsammlung. Für eine neue Fassung die alte „KAIROS Font“ dort vorher entfernen, sonst zeigt macOS weiter die alte aus dem Zwischenspeicher.
 - Verbindungen (`calt`) und der Schriftzug „HAGEN AAD FOCK“ (`liga`) sind immer an. Zeigt ein Programm keine Verbindungen, die kontextbedingten Varianten in seinen Typografie-Einstellungen einschalten.
-- Monogramm HAF: „HAF“ als eigenes Wort mit bedingten Ligaturen (`dlig`) oder das Zeichen U+E000.
+- Monogramm HAF: „HAF“ als eigenes Wort mit bedingten Ligaturen (`dlig`, in macOS „Seltene Ligaturen“) oder das Zeichen U+E000.
