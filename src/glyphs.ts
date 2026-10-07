@@ -750,6 +750,26 @@ const glyphSection: GlyphDef = {
   docks: () => [],
 };
 
+// ── Monogramm (M2) ──
+
+/** Monogramm HAF: A im H (A-Querbalken = H-Balken auf der unteren Linie), F-Arme am rechten H-Stamm. */
+const glyphHAF: GlyphDef = {
+  char: "\uE000",
+  params: { h, w: R(240, 300, 380) },
+  draw(p, s) {
+    const top = inkTop(p, s), t = cTop(p, s), y = s.barLow * p.h, yh = s.barHigh * p.h, run = (p.w - s.apexW) / 2, d = capDrop(run, t, s);
+    return [
+      stroke(0, 0, L(0, top)),
+      stroke(p.w, 0, L(p.w, top)),
+      stroke((-run * d) / t, -d, L(run, t), L(p.w - run, t), L(p.w + (run * d) / t, -d)),
+      stroke(0, y, L(p.w, y)),
+      stroke(p.w, t, L(p.w + 265, t)),
+      stroke(p.w, yh, L(p.w + 212, yh)),
+    ];
+  },
+  docks: () => [],
+};
+
 /** Ersatz für noch nicht entworfene Zeichen. */
 export const PLACEHOLDER: GlyphDef = {
   char: "?",
@@ -766,7 +786,7 @@ export const GLYPHS: Record<string, GlyphDef> = Object.fromEntries(
     glyphPeriod, glyphComma, glyphColon, glyphSemicolon, glyphExclam, glyphQuestion, glyphHyphen, glyphEndash,
     glyphParenLeft, glyphParenRight, glyphSlash, glyphAmpersand, glyphQuoteSingle, glyphQuoteRight, glyphQuoteDbl,
     glyphQuoteDblBase, glyphQuoteDblLeft, glyphQuoteSingleBase, glyphQuoteLeft, glyphGuillemetLeft, glyphGuillemetRight,
-    glyphEuro, glyphPercent, glyphAt, glyphNumber, glyphPlus, glyphEqual, glyphAsterisk, glyphSection, glyphEllipsis,
+    glyphEuro, glyphPercent, glyphAt, glyphNumber, glyphPlus, glyphEqual, glyphAsterisk, glyphSection, glyphEllipsis, glyphHAF,
   ].map((g) => [g.char, g]),
 );
 

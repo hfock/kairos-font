@@ -7,6 +7,7 @@ import { FLAECHE_1902 as S } from "../src/style";
 const ALL = [..."ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÜẞ"];
 const DIGITS = [..."0123456789"];
 const MARKS = [...".,:;!?-–()/&'’\"„“‚‘«»€%@#+=*§…"]; // Spec M2 §3: Satz-Grundset und Plakat-Zeichen
+const HAF = "\uE000";
 const ink = (st: Stroke[]) => st.flatMap((x) => inkPoints(x, S.stroke / 2));
 const kinds = (c: string, p: Partial<Params> = {}) =>
   GLYPHS[c].docks({ ...defaults(GLYPHS[c]), ...p }, S).map((d) => d.kind + ("side" in d ? ":" + d.side : ""));
@@ -23,13 +24,13 @@ test("alle Versalien, Umlaute und ẞ sind entworfen", () => {
   expect(ALL.filter((c) => !GLYPHS[c])).toEqual([]);
 });
 
-test("Ziffern sowie Satz- und Plakat-Zeichen sind entworfen", () => {
-  expect([...DIGITS, ...MARKS].filter((c) => !GLYPHS[c])).toEqual([]);
+test("Ziffern, Satz- und Plakat-Zeichen und das Monogramm sind entworfen", () => {
+  expect([...DIGITS, ...MARKS, HAF].filter((c) => !GLYPHS[c])).toEqual([]);
 });
 
 test("Tinte bleibt endlich und im Buchstabenfeld (Höhe, x ≥ linker Bezug)", () => {
   const bad = new Set<string>();
-  for (const g of [...[...ALL, ...DIGITS, ...MARKS].map((c) => GLYPHS[c]), PLACEHOLDER])
+  for (const g of [...[...ALL, ...DIGITS, ...MARKS, HAF].map((c) => GLYPHS[c]), PLACEHOLDER])
     for (const p of variants(g)) {
       const top = S.capHeight * (p.h ?? 1), bottom = -(g.desc ?? 0); // Satzzeichen ohne Höhenregler: volle Höhe; Komma mit Unterlänge
       for (const q of ink(g.draw(p, S))) {
@@ -140,4 +141,12 @@ test("Punkt: Quadrat in Strichstärke auf der Grundlinie; Komma und tiefe Anfüh
     expect(Math.min(...ys(c))).toBeGreaterThanOrEqual(-130);
   }
   for (const c of [...".:!?-–'\"’‘“«»…"]) expect(GLYPHS[c].desc).toBeUndefined();
+});
+
+test("Monogramm HAF: zwei H-Stämme über die volle Höhe, gemeinsamer Balken auf der unteren Linie, F-Arme rechts", () => {
+  const g = GLYPHS[HAF], p = defaults(g), st = g.draw(p, S);
+  const vertical = (x: number) => st.some((q) => q.start.x === x && q.start.y === 0 && (q.segs[0] as { p: { x: number; y: number } }).p.x === x && (q.segs[0] as { p: { y: number } }).p.y === S.capHeight);
+  expect(vertical(0) && vertical(p.w)).toBe(true);
+  expect(st.some((q) => q.start.y === S.barLow && q.start.x === 0)).toBe(true);
+  expect(Math.max(...ink(st).map((q) => q.x))).toBeGreaterThan(p.w + 200);
 });
