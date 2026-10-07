@@ -40,3 +40,8 @@ Display-Schrift im Duktus der Wiener Moderne um 1902 (Vorlage: Schriftzug „DIE
 - Installieren: `dist/KAIROSFont-Regular.otf` per Doppelklick in die Schriftsammlung. Für eine neue Fassung die alte „KAIROS Font“ dort vorher entfernen, sonst zeigt macOS weiter die alte aus dem Zwischenspeicher.
 - Verbindungen (`calt`) und der Schriftzug „HAGEN AAD FOCK“ (`liga`) sind immer an. Zeigt ein Programm keine Verbindungen, die kontextbedingten Varianten in seinen Typografie-Einstellungen einschalten.
 - Monogramm HAF: „HAF“ als eigenes Wort mit bedingten Ligaturen (`dlig`, in macOS „Seltene Ligaturen“) oder das Zeichen U+E000.
+
+## Bekannte Grenzen
+
+- Wortabstand: das Leerzeichen ist fest. Die App setzt Wörter nach der Tinte, der Font nach den Glyphenkästen; an offenen Seiten (etwa „AUF ALLE“, „DA VOR“) steht der Font bis zu ~170 Einheiten weiter.
+- Verbindungen: der Font entscheidet von links nach rechts, die Engine sucht die beste Lösung; selten weicht das ab (etwa „VARIATIONSKOEFFIZIENT“). Zweimal verschachteln (FF vor Satzzeichen) kann der Font nicht.

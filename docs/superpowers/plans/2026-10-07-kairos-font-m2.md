@@ -44,6 +44,7 @@ Im Prototyp geklärt; der Code in diesem Plan ist dort gelaufen (72 Bun-Tests, 1
 | §7.4 „Bildvergleich, höchstens 1 % der Tintenpixel“ | Flächenvergleich mit skia-pathops: was mehr als 1,5 Einheiten abweicht, höchstens 1 % der Tintenfläche | vektorgenau ohne Rasterbild; Rundung um ±1 zählt nicht |
 | §5.5 Testseite | Adresse `/font` | Bun benennt die Route nach der Datei |
 | §4.3 Monogramm | Startidee umgesetzt; Feinform nach der Sichtprüfung in Task 4 | – |
+| Zeichen-Tabelle „Leerzeichen … Lichtweite wie der Wortabstand der App (136)“ | festes Leerzeichen 80: 136 von Kasten zu Kasten | die App setzt Wörter nach der Tinte; an offenen Seiten (F␣A, L␣T, A␣V) steht der Font bis zu ~170 Einheiten weiter. Wortabstand nach Tinte bräuchte kontextabhängiges GPOS – Entscheidung bei der Abnahme (sonst M3) |
 
 ## Dateistruktur
 
