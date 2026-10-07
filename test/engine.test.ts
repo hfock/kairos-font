@@ -79,11 +79,17 @@ test("Buchstaben-Pin widerspricht Verbindungs-Pin: der Verbindungs-Pin rechts da
   expect(r.variants[0].glyphs.find((g) => g.index === 5)!.inst.p.h).toBe(0.8);
 });
 
-test("Kleinbuchstaben werden in M1 zu Versalien, unbekannte Zeichen zu Platzhaltern", () => {
+test("Kleinbuchstaben werden zu Versalien, unbekannte Zeichen zu Platzhaltern", () => {
   expect(layoutLine("die fläche", opts()).variants.map(kinds)).toEqual(layoutLine("DIE FLÄCHE", opts()).variants.map(kinds));
-  const r = layoutLine("ÜBER", opts());
-  expect(r.warnings).toContain("Zeichen „Ü“ noch nicht entworfen");
+  const r = layoutLine("@ÜBER", opts());
+  expect(r.warnings).toEqual(["Zeichen „@“ noch nicht entworfen"]);
   expect(r.variants[0].glyphs[0].inst.def.char).toBe("?");
+});
+
+test("ganzes Versal-Alphabet ohne Platzhalter; ß wird zu ẞ", () => {
+  const r = layoutLine("JUWELIER QUARZ XYLOPHON BÖSE STRAßE", opts());
+  expect(r.warnings).toEqual([]);
+  expect(r.variants[0].glyphs.map((g) => g.char).join("")).toBe("JUWELIERQUARZXYLOPHONBÖSESTRAẞE");
 });
 
 test("e Zielbreite: erreichbar → passt auf ±2, unerreichbar → Hinweis", () => {

@@ -31,7 +31,7 @@ function words(text: string, warn: Set<string>): Letter[][] {
   const out: Letter[][] = [];
   let cur: Letter[] = [];
   [...text].forEach((raw, index) => {
-    const char = raw === "ß" ? raw : raw.toUpperCase();
+    const char = raw === "ß" ? "ẞ" : raw.toUpperCase(); // toUpperCase macht aus ß zwei Buchstaben
     if (char.trim() === "") {
       if (cur.length) out.push(cur);
       cur = [];

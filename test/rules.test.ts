@@ -75,3 +75,21 @@ test("trimTop: oberer F-Arm endet armGap vor dem Nachbarn", () => {
   expect(t.p.w + t.p.top).toBeCloseTo(400 - S.stroke / 2 - S.armGap, 0);
   expect(trimTop(f, 0, i, 2000, S)).toBe(f);
 });
+
+test("joinsFor bei den übrigen Versalien: TH teilt den Arm, RA die Füße, ZA unterfährt, UN den Stamm", () => {
+  const types = (a: string, b: string) => joinsFor(inst(a), inst(b)).map((j) => j.sub ?? j.type);
+  expect(types("T", "H")).toEqual(["none", "term"]);
+  expect(types("T", "A")).toEqual(["none"]);
+  expect(types("R", "A")).toEqual(["none", "leg"]);
+  expect(types("K", "A")).toEqual(["none", "leg"]);
+  expect(types("Z", "A")).toEqual(["none", "underrun"]);
+  expect(types("U", "N")).toEqual(["none", "stem"]);
+  expect(types("J", "U")).toEqual(["none"]); // J ohne Stamm-Andocken: J + U würde zu „ɯ“
+});
+
+test("c Strich teilen TH: der T-Arm endet auf dem H-Stamm (< 0,5 Einheiten), Pin auf dem Arm bleibt gültig", () => {
+  const { l, dx } = join({ type: "share", sub: "term" }, "T", "H");
+  expect(Math.abs(l.p.w + l.p.top - dx)).toBeLessThan(0.5); // H-Stamm liegt bei dx + 0
+  const long = apply({ type: "share", sub: "term" }, inst("T", { top: 120 }), GLYPHS.H, defaults(GLYPHS.H), S)!;
+  expect(Math.abs(GLYPHS.T.params.w.def + 120 - long.dx)).toBeLessThan(0.5);
+});

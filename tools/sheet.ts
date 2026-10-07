@@ -6,7 +6,9 @@ import { FLAECHE_1902 } from "../src/style";
 
 const INKSCAPE = "/Applications/Inkscape.app/Contents/MacOS/inkscape";
 const jobs: [string, string, number][] = [
-  ["glyphen", "A C D E F G H I K L N O Ä", 0],
+  ["glyphen", "A B C D E F G H I J K L M N O", 0],
+  ["glyphen-2", "P Q R S T U V W X Y Z Ä Ö Ü ẞ", 0],
+  ["wiener-werkstaette", "WIENER WERKSTÄTTE", 0.5],
   ["die-flaeche", "DIE FLÄCHE", 0.5],
   ["hagen-aad-fock", "HAGEN AAD FOCK", 0.5],
   ["hagen-aad-fock-wild", "HAGEN AAD FOCK", 1],

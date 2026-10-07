@@ -1,9 +1,11 @@
 import { expect, test } from "bun:test";
-import { inkPoints } from "../src/geom";
+import { inkPoints, minDist, type Stroke } from "../src/geom";
 import { GLYPHS, PLACEHOLDER, defaults, inRange, type GlyphDef, type Params } from "../src/glyphs";
+import { barLink, instance } from "../src/rules";
 import { FLAECHE_1902 as S } from "../src/style";
 
-const M1 = [..."ACDEFGHIKLNOÄ"];
+const ALL = [..."ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÜẞ"];
+const ink = (st: Stroke[]) => st.flatMap((x) => inkPoints(x, S.stroke / 2));
 
 /** Start-, Minimal- und Maximalwerte je Regler einzeln, dazu alle auf Minimum bzw. Maximum. */
 function variants(g: GlyphDef): Params[] {
@@ -14,23 +16,21 @@ function variants(g: GlyphDef): Params[] {
   return out;
 }
 
-test("alle M1-Zeichen sind entworfen", () => {
-  expect(M1.filter((c) => !GLYPHS[c])).toEqual([]);
+test("alle Versalien, Umlaute und ẞ sind entworfen", () => {
+  expect(ALL.filter((c) => !GLYPHS[c])).toEqual([]);
 });
 
 test("Tinte bleibt endlich und im Buchstabenfeld (Höhe, x ≥ linker Bezug)", () => {
-  for (const g of [...M1.map((c) => GLYPHS[c]), PLACEHOLDER])
+  const bad = new Set<string>();
+  for (const g of [...ALL.map((c) => GLYPHS[c]), PLACEHOLDER])
     for (const p of variants(g)) {
-      const ink = g.draw(p, S).flatMap((st) => inkPoints(st, S.stroke / 2));
       const top = S.capHeight * p.h;
-      for (const q of ink) {
-        expect(Number.isFinite(q.x) && Number.isFinite(q.y)).toBe(true);
-        expect(q.y).toBeGreaterThanOrEqual(-S.stroke); // Füße reichen bis eine Strichstärke unter die Grundlinie, der Renderer schneidet dort waagrecht ab
-        expect(q.y).toBeLessThanOrEqual(top + S.stroke / 2);
-        expect(q.x).toBeGreaterThanOrEqual(-S.stroke);
-        expect(q.x).toBeLessThan(1000);
-      }
+      for (const q of ink(g.draw(p, S)))
+        // Füße und Spitzen reichen bis eine Strichstärke über Grund- und Oberlinie hinaus, der Renderer schneidet dort waagrecht ab
+        if (!(Number.isFinite(q.x) && Number.isFinite(q.y) && q.y >= -S.stroke && q.y <= top + S.stroke && q.x >= -S.stroke && q.x < 1000))
+          bad.add(`${g.char} ${JSON.stringify(p)}`);
     }
+  expect([...bad]).toEqual([]);
 });
 
 test("Andockstellen der Vorlage-Buchstaben", () => {
@@ -77,4 +77,41 @@ test("Füße von A, Ä und K reichen knapp unter die Grundlinie (waagrechter Sch
     expect(Math.min(...ys)).toBeGreaterThan(-S.stroke / 2);
   }
   expect(GLYPHS.K.draw(defaults(GLYPHS.K), S).length).toBe(3);
+});
+
+test("Andockstellen der übrigen Versalien", () => {
+  const kinds = (c: string) => GLYPHS[c].docks(defaults(GLYPHS[c]), S).map((d) => d.kind + ("side" in d ? ":" + d.side : ""));
+  expect(kinds("T")).toEqual(["terminal"]); // Arm mündet in den Nachbarstamm (TH, TE)
+  expect(kinds("Z")).toEqual(["foot"]);
+  expect(kinds("Q")).toEqual(["foot"]);
+  expect(kinds("R")).toEqual(["stem:left", "leg:right", "bar"]);
+  expect(kinds("U")).toEqual(["stem:left", "stem:right"]);
+  expect(kinds("Ü")).toEqual(["stem:left", "stem:right"]);
+  expect(kinds("M")).toEqual(["stem:left", "stem:right", "bar"]);
+  expect(kinds("W")).toEqual(["stem:left", "stem:right", "bar"]);
+  expect(kinds("B")).toEqual(["stem:left", "bar"]);
+  expect(kinds("P")).toEqual(["stem:left", "bar"]);
+  expect(kinds("ẞ")).toEqual(["stem:left"]);
+  for (const c of ["J", "S", "V", "Ö"]) expect(kinds(c)).toEqual([]);
+});
+
+test("Knoten auf den Balkenlinien: B P R W X Y oben, M unten; sie verbinden nicht mit Nachbarn", () => {
+  const knotY = (c: string) => (GLYPHS[c].docks(defaults(GLYPHS[c]), S).find((d) => d.kind === "bar") as { y: number }).y;
+  for (const c of ["B", "P", "R", "W", "X", "Y"]) expect(knotY(c)).toBe(S.barHigh);
+  expect(knotY("M")).toBe(S.barLow);
+  const i = (c: string) => instance(GLYPHS[c], defaults(GLYPHS[c]), S);
+  expect(barLink(i("P"), 0, i("E"), 290, S)).toBeNull();
+  expect(barLink(i("H"), 0, i("B"), 300, S)).toBeNull();
+});
+
+test("Ö und Ü: Punkt-Quadrate auf der Oberlinie; Ö-Punkte halten armGap Abstand zum Bogen", () => {
+  for (const c of ["Ö", "Ü"])
+    for (const d of GLYPHS[c].draw(defaults(GLYPHS[c]), S).slice(-2)) {
+      expect(d.start.y).toBe(S.capHeight - S.stroke / 2);
+      expect((d.segs[0] as { p: { x: number } }).p.x - d.start.x).toBe(S.stroke);
+    }
+  for (const w of [210, 240, 300]) {
+    const st = GLYPHS["Ö"].draw({ h: 1, w }, S);
+    expect(minDist(ink(st.slice(0, 1)), 0, ink(st.slice(1)), 0, 100)).toBeGreaterThanOrEqual(S.armGap - 1);
+  }
 });

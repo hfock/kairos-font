@@ -18,7 +18,7 @@ const LABEL: Record<string, string> = {
   none: "keine",
   nest: "verschachteln",
   underrun: "unterfahren",
-  term: "Strich teilen (Bogen)",
+  term: "Strich teilen (Bogen/Arm)",
   stem: "Strich teilen (Stamm)",
   leg: "Strich teilen (Füße)",
 };
