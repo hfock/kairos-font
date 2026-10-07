@@ -28,9 +28,9 @@ test("Tinte bleibt endlich und im Buchstabenfeld (Höhe, x ≥ linker Bezug)", (
       const top = S.capHeight * p.h;
       for (const q of ink(g.draw(p, S))) {
         // Füße und Spitzen reichen bis eine Strichstärke über Grund- und Oberkante hinaus, der Renderer schneidet dort waagrecht ab;
-        // sichtbar bleibt das Band dazwischen, dort ragt die Schnittkante flacher Beine (X tief, breit, kurz) bis 2 Striche vor
+        // die waagrechte Schnittkante flacher Beine (X, Y breit und kurz) ragt dabei bis Strich/2 ÷ sin θ ≈ 1,05 Striche vor x = 0
         const ok = Number.isFinite(q.x) && Number.isFinite(q.y) && q.y >= -S.stroke && q.y <= top + S.stroke;
-        if (!ok || (q.y >= 0 && q.y <= top && !(q.x >= -2 * S.stroke && q.x < 1000))) bad.add(`${g.char} ${JSON.stringify(p)}`);
+        if (!ok || !(q.x >= -1.1 * S.stroke && q.x < 1000)) bad.add(`${g.char} ${JSON.stringify(p)}`);
       }
     }
   expect([...bad]).toEqual([]);

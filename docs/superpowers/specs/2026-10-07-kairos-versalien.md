@@ -29,7 +29,7 @@ Ziffern, Satzzeichen, Font-Build, `calt`, Namens-Ligatur und Monogramm bleiben b
 | Q | O mit waagrechtem Schwanz auf der Grundlinie | Fuß; der Fuß-Griff verlängert den Schwanz |
 | R | wie P, Bein vom Stamm aus wie beim K | Stamm teilen, Füße teilen (RA) |
 | S | Kopf wie beim C, Schwung, Fuß wie beim D | keine |
-| T | Arm, Stamm in der Mitte | Arm mündet oben in den Nachbarstamm (TH, TE) |
+| T | Arm, Stamm in der Mitte | Arm mündet in den Nachbarstamm (TH, TE); ein verkürztes T (z. B. unter dem F-Arm) trifft ihn auf seiner eigenen Höhe |
 | U | zwei Stämme, Halbkreis unten | Stamm teilen |
 | V | A umgedreht, flache Spitze unten | keine |
 | W | M umgedreht, Spitze auf der oberen Linie | Stamm teilen |
