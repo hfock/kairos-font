@@ -11,10 +11,11 @@ Display-Schrift im Duktus der Wiener Moderne um 1902 (Vorlage: Schriftzug „DIE
 
 | Befehl | Wirkung |
 |---|---|
-| `bun run dev` | App auf http://localhost:3457 |
+| `bun run dev` | App auf http://localhost:3457, Font-Probe auf http://localhost:3457/font |
 | `bun test` | alle Prüfungen |
 | `bun run typecheck` | TypeScript prüfen |
 | `bun run sheet` | Prüfblätter nach `out/` (PNG, wenn Inkscape installiert ist) |
+| `bun run font` | Font bauen und prüfen: `dist/KAIROSFont-Regular.otf` und `.woff2` (braucht uv; beim ersten Mal Netz für die Python-Pakete) |
 | `uv run tools/overlay.py` | Referenz-Overlay neu erzeugen, Werte für `presets/die-flaeche.json` ausgeben |
 
 ## Aufbau
@@ -28,6 +29,14 @@ Display-Schrift im Duktus der Wiener Moderne um 1902 (Vorlage: Schriftzug „DIE
 | `src/engine.ts` | Strahlsuche, Bewertung (`WEIGHTS`), Pins, Zielbreite |
 | `src/presets.ts` | Prüfung von Vorlagen und Browser-Speicher |
 | `src/render.ts` | Layout → SVG |
+| `src/fontdata.ts` | Font-Daten aus der Engine: Glyphen, calt-Varianten, Unterschneidung, Feature-Datei, Sollwerte |
 | `src/ui.ts` + `index.html` | Oberfläche |
+| `src/fonttest.ts` + `font.html` | Font-Probe: Webfont neben dem Engine-Ergebnis |
 | `presets/` | mitgelieferte Vorlagen |
-| `tools/` | Prüfblatt (`sheet.ts`), Referenz-Overlay (`overlay.py`) |
+| `tools/` | Prüfblatt (`sheet.ts`), Referenz-Overlay (`overlay.py`), Font-Export (`export-font.ts`), Font-Build (`build_font.py`), Font-Prüfung (`test_font.py`) |
+
+## Font benutzen
+
+- Installieren: `dist/KAIROSFont-Regular.otf` per Doppelklick in die Schriftsammlung. Für eine neue Fassung die alte „KAIROS Font“ dort vorher entfernen, sonst zeigt macOS weiter die alte aus dem Zwischenspeicher.
+- Verbindungen (`calt`) und der Schriftzug „HAGEN AAD FOCK“ (`liga`) sind immer an. Zeigt ein Programm keine Verbindungen, die kontextbedingten Varianten in seinen Typografie-Einstellungen einschalten.
+- Monogramm HAF: „HAF“ als eigenes Wort mit bedingten Ligaturen (`dlig`) oder das Zeichen U+E000.
