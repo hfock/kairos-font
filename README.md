@@ -5,6 +5,7 @@ Display-Schrift im Duktus der Wiener Moderne um 1902 (Vorlage: Schriftzug „DIE
 - Spec: `docs/superpowers/specs/2026-10-06-kairos-font-design.md`
 - Plan M1: `docs/superpowers/plans/2026-10-06-kairos-font-m1.md`
 - Übrige Versalien (M2, Teil 1): `docs/superpowers/specs/2026-10-07-kairos-versalien.md`
+- Spec M2 (Font-Datei, Ziffern, Zeichen, Ligaturen): `docs/superpowers/specs/2026-10-07-kairos-font-m2-design.md`
 
 ## Befehle
 
