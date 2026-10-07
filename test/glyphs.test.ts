@@ -143,10 +143,44 @@ test("Punkt: Quadrat in Strichstärke auf der Grundlinie; Komma und tiefe Anfüh
   for (const c of [...".:!?-–'\"’‘“«»…"]) expect(GLYPHS[c].desc).toBeUndefined();
 });
 
-test("Monogramm HAF: zwei H-Stämme über die volle Höhe, gemeinsamer Balken auf der unteren Linie, F-Arme rechts", () => {
-  const g = GLYPHS[HAF], p = defaults(g), st = g.draw(p, S);
-  const vertical = (x: number) => st.some((q) => q.start.x === x && q.start.y === 0 && (q.segs[0] as { p: { x: number; y: number } }).p.x === x && (q.segs[0] as { p: { y: number } }).p.y === S.capHeight);
-  expect(vertical(0) && vertical(p.w)).toBe(true);
-  expect(st.some((q) => q.start.y === S.barLow && q.start.x === 0)).toBe(true);
+test("Monogramm HAF: zwei H-Stämme über die volle Höhe, A frei dazwischen, gemeinsamer Balken auf der unteren Linie, F-Arme rechts", () => {
+  const g = GLYPHS[HAF], p = defaults(g), st = g.draw(p, S), t = S.capHeight - S.stroke / 2;
+  const vertical = (x: number) => st.some((q) => q.start.x === x && q.start.y === 0 && q.segs[0].p.x === x && q.segs[0].p.y === S.capHeight);
+  expect(vertical(0)).toBe(true);
+  expect(vertical(p.w)).toBe(true);
+  const a = st.find((q) => q.segs.length === 3 && q.segs[0].p.y === t && q.segs[1].p.y === t)!; // A: Bein, flache Spitze, Bein
+  expect(a.start.x).toBeGreaterThan(S.stroke); // Füße frei von den Stämmen
+  expect(a.segs[2].p.x).toBeLessThan(p.w - S.stroke);
+  expect(st.some((q) => q.start.x === 0 && q.start.y === S.barLow && q.segs[0].p.x === p.w)).toBe(true); // Balken von Stamm zu Stamm
   expect(Math.max(...ink(st).map((q) => q.x))).toBeGreaterThan(p.w + 200);
+});
+
+test("Stamm ohne Stufe: Fahne der 1 und Diagonale der 4 erreichen die Oberkante an der linken Stammkante", () => {
+  for (const [c, stem] of [["1", (p: Params) => p.w], ["4", (p: Params) => 0.72 * p.w]] as const) {
+    const g = GLYPHS[c], p = defaults(g), edge = stem(p) - S.stroke / 2;
+    const near = inkPoints(g.draw(p, S)[1], S.stroke / 2, 1).filter((q) => Math.abs(q.x - edge) < 1.5);
+    expect(Math.max(...near.map((q) => q.y))).toBeGreaterThanOrEqual(S.capHeight - 1);
+  }
+});
+
+test("Komma und Anführungszeichen: der Schwanz beginnt im Punkt, keine Stufe neben dem Quadrat", () => {
+  for (const c of [",", "’"]) {
+    const [dot, tail] = GLYPHS[c].draw({}, S), cx = dot.start.x + S.stroke / 2, y0 = dot.start.y - S.stroke / 2;
+    const beside = ink([tail]).filter((q) => q.y >= y0 && q.y <= y0 + S.stroke && q.x > cx + S.stroke / 2 + 0.5);
+    expect(beside).toEqual([]);
+  }
+});
+
+test("Klammern enden waagrecht in Ober- und Grundlinie, ohne Beschnitt", () => {
+  for (const c of ["(", ")"]) {
+    const ys = ink(GLYPHS[c].draw({}, S)).map((q) => q.y);
+    expect(Math.min(...ys)).toBeGreaterThanOrEqual(-0.5);
+    expect(Math.max(...ys)).toBeLessThanOrEqual(S.capHeight + 0.5);
+  }
+});
+
+test("@: die Beine des kleinen A laufen unten lotrecht aus (waagrechter Fuß ohne Beschnitt)", () => {
+  const legs = GLYPHS["@"].draw({}, S).find((q) => q.segs.length === 5)!; // Fuß, Bein, Spitze, Bein, Fuß
+  expect(legs.segs[0].p.x).toBe(legs.start.x);
+  expect(legs.segs[4].p.x).toBe(legs.segs[3].p.x);
 });

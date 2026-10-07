@@ -423,7 +423,7 @@ const glyph0: GlyphDef = { ...glyphO, char: "0", params: { h, w: R(160, 200, 240
 const glyph1: GlyphDef = {
   char: "1",
   params: { h, w: R(60, 90, 140) },
-  draw: (p, s) => [stroke(p.w, 0, L(p.w, inkTop(p, s))), stroke(0, s.barHigh * p.h, L(p.w, cTop(p, s)))], // Fahne von der oberen Balkenlinie
+  draw: (p, s) => [stroke(p.w, 0, L(p.w, inkTop(p, s))), stroke(0, s.barHigh * p.h, L(p.w, inkTop(p, s)))], // Fahne von der oberen Balkenlinie bis zur Oberkante: keine Stufe am Stamm
   docks: () => [],
 };
 
@@ -459,7 +459,7 @@ const glyph4: GlyphDef = {
   params: { h, w: R(200, 250, 300) },
   draw(p, s) {
     const xs = 0.72 * p.w, y = s.barLow * p.h;
-    return [stroke(xs, 0, L(xs, inkTop(p, s))), stroke(xs, cTop(p, s), L(0, y), L(p.w, y))]; // Querbalken auf der unteren Linie
+    return [stroke(xs, 0, L(xs, inkTop(p, s))), stroke(xs, inkTop(p, s), L(0, y), L(p.w, y))]; // Diagonale ab der Oberkante (keine Stufe am Stamm), Querbalken auf der unteren Linie
   },
   docks: () => [],
 };
@@ -468,8 +468,12 @@ const glyph5: GlyphDef = {
   char: "5",
   params: { h, w: R(180, 230, 290) },
   draw(p, s) {
-    const t = cTop(p, s), b = cBot(s), y = s.barHigh * p.h, a = 0.3 * p.w;
-    return [stroke(0.85 * p.w, t, L(0, t), L(0, y), L(a, y), ...belly(a, y, p.w, b, 47 * p.h), L(0, b))];
+    // Arm, Stamm bis zur oberen Linie, darunter runder Bauch (Rundung wie bei O und U) zurück zur Grundlinie
+    const t = cTop(p, s), b = cBot(s), y = s.barHigh * p.h, r = Math.min((y - b) / 2, p.w / 2), k = KAPPA * r;
+    return [
+      stroke(0.85 * p.w, t, L(0, t), L(0, y), L(p.w - r, y), C(p.w - r + k, y, p.w, y - r + k, p.w, y - r), L(p.w, b + r),
+        C(p.w, b + r - k, p.w - r + k, b, p.w - r, b), L(0, b)),
+    ];
   },
   docks: () => [],
 };
@@ -531,7 +535,7 @@ const fixed: Record<string, Range> = {}; // Satzzeichen: keine Regler, die Form 
 const glyphPeriod: GlyphDef = { char: ".", params: fixed, draw: (_p, s) => [square(s.stroke / 2, s.stroke / 2, s)], docks: () => [] };
 
 /** Komma: Punkt auf der Grundlinie, Schwanz schräg nach links unten (Unterlänge). */
-const comma = (x: number, s: Style) => [square(x, s.stroke / 2, s), stroke(x + 7, s.stroke / 2, L(x - 19, -117))];
+const comma = (x: number, s: Style) => [square(x, s.stroke / 2, s), stroke(x, s.stroke / 2, L(x - 26, -117))]; // Schwanz beginnt in der Punktmitte, sein Ende verschwindet im Quadrat
 
 const glyphComma: GlyphDef = { char: ",", params: fixed, desc: 130, draw: (_p, s) => comma(s.stroke / 2 + 19, s), docks: () => [] };
 
@@ -571,10 +575,10 @@ const glyphHyphen: GlyphDef = { char: "-", params: fixed, draw: (_p, s) => [stro
 
 const glyphEndash: GlyphDef = { char: "–", params: fixed, draw: (_p, s) => [stroke(0, mid(s), L(280, mid(s)))], docks: () => [] };
 
-/** Klammer: flacher Bogen über die ganze Höhe, Enden über Ober- und Grundlinie hinaus (der Renderer schneidet waagrecht). */
+/** Klammer: flacher Bogen über die ganze Höhe; die Enden laufen waagrecht in Ober- und Grundlinie aus, der stumpfe Schnitt steht senkrecht. */
 function paren(s: Style, w: number): Stroke {
-  const H = s.capHeight, m = H / 2, e = 10;
-  return stroke(w, H + e, C(0.35 * w, H, 0, m + 0.3 * H, 0, m), C(0, m - 0.3 * H, 0.35 * w, 0, w, -e));
+  const H = s.capHeight, m = H / 2, t = H - s.stroke / 2, b = s.stroke / 2;
+  return stroke(w, t, C(0.35 * w, t, 0, m + 0.3 * H, 0, m), C(0, m - 0.3 * H, 0.35 * w, b, w, b));
 }
 
 const glyphParenLeft: GlyphDef = { char: "(", params: fixed, draw: (_p, s) => [paren(s, 110)], docks: () => [] };
@@ -600,7 +604,7 @@ const glyphSlash: GlyphDef = {
 const tick = (x: number, s: Style) => stroke(x, s.barHigh, L(x, s.capHeight));
 
 /** Komma-förmiges Anführungszeichen oben („9“); gedreht ergibt es die „6“. */
-const quote9 = (x: number, s: Style) => [square(x, s.capHeight - s.stroke / 2, s), stroke(x + 7, s.capHeight - s.stroke / 2, L(x - 19, s.barHigh))];
+const quote9 = (x: number, s: Style) => [square(x, s.capHeight - s.stroke / 2, s), stroke(x, s.capHeight - s.stroke / 2, L(x - 26, s.barHigh))]; // wie das Komma: Schwanz aus der Punktmitte
 
 const quote6 = (x: number, s: Style) => quote9(x, s).map((st) => mapPts(st, (q) => ({ x: 2 * x - q.x, y: s.capHeight + s.barHigh - q.y })));
 
@@ -692,8 +696,14 @@ const glyphAt: GlyphDef = {
   char: "@",
   params: fixed,
   draw(_p, s) {
-    const a = glyphA.draw({ h: 0.42, w: 150, bar: 1, legL: 0 }, s).map((st) => mapPts(st, moveBy(75, 0.29 * s.capHeight)));
-    return [...glyphO.draw({ h: 1, w: 300 }, s), ...a]; // kleines A mittig im O-Oval
+    // kleines A mittig im O-Oval; die Beine laufen unten 8 Einheiten lotrecht aus, so endet der Fuß waagrecht ohne Beschnitt
+    const y0 = 0.29 * s.capHeight, t = y0 + 0.42 * s.capHeight - s.stroke / 2, xl = 75, xr = 225, a = s.apexW / 2, yb = y0 + 0.42 * s.barLow;
+    const xAt = (y: number) => xl + ((y - y0 - 8) / (t - y0 - 8)) * (150 - a - xl); // linkes Bein auf Höhe y
+    return [
+      ...glyphO.draw({ h: 1, w: 300 }, s),
+      stroke(xl, y0, L(xl, y0 + 8), L(150 - a, t), L(150 + a, t), L(xr, y0 + 8), L(xr, y0)),
+      stroke(xAt(yb), yb, L(300 - xAt(yb), yb)),
+    ];
   },
   docks: () => [],
 };
@@ -752,19 +762,20 @@ const glyphSection: GlyphDef = {
 
 // ── Monogramm (M2) ──
 
-/** Monogramm HAF: A im H (A-Querbalken = H-Balken auf der unteren Linie), F-Arme am rechten H-Stamm. */
+/** Monogramm HAF: A frei zwischen den H-Stämmen, gemeinsamer Balken auf der unteren Linie (H-Balken = A-Querbalken), F-Arme am rechten H-Stamm. */
 const glyphHAF: GlyphDef = {
   char: "\uE000",
-  params: { h, w: R(240, 300, 380) },
+  params: { h, w: R(260, 320, 400) },
   draw(p, s) {
-    const top = inkTop(p, s), t = cTop(p, s), y = s.barLow * p.h, yh = s.barHigh * p.h, run = (p.w - s.apexW) / 2, d = capDrop(run, t, s);
+    const top = inkTop(p, s), t = cTop(p, s), y = s.barLow * p.h, yh = s.barHigh * p.h, x0 = 50, x1 = p.w - 50; // A-Füße 50 vom Stamm
+    const run = (x1 - x0 - s.apexW) / 2, d = capDrop(run, t, s), fw = glyphF.params.w.def; // F-Arme wie beim F: oben fw, Mitte 0,8 · fw
     return [
       stroke(0, 0, L(0, top)),
       stroke(p.w, 0, L(p.w, top)),
-      stroke((-run * d) / t, -d, L(run, t), L(p.w - run, t), L(p.w + (run * d) / t, -d)),
+      stroke(x0 - (run * d) / t, -d, L(x0 + run, t), L(x1 - run, t), L(x1 + (run * d) / t, -d)),
       stroke(0, y, L(p.w, y)),
-      stroke(p.w, t, L(p.w + 265, t)),
-      stroke(p.w, yh, L(p.w + 212, yh)),
+      stroke(p.w, t, L(p.w + fw, t)),
+      stroke(p.w, yh, L(p.w + 0.8 * fw, yh)),
     ];
   },
   docks: () => [],
