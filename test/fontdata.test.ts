@@ -32,10 +32,18 @@ test("Sollwerte: FLÄCHE mit gekürztem F-Arm, Namens-Ligatur, Monogramm nur als
   for (const e of data.expect) for (const w of e.words) for (const g of w) expect(byName.has(g.name)).toBe(true);
 });
 
+test("Sollwerte für Ketten mit Varianten: GLAS, TEAM, OFFEN, AUFTAKT", () => {
+  const words = (t: string) => data.expect.find((e) => e.text === t)!.words.map((w) => w.map((g) => g.name).join(" "));
+  expect(words("GLAS")).toEqual(["G.term L.foot A.lift S"]); // Endstrich vor einer Fuß-Variante
+  expect(words("TEAM")).toEqual(["T E.foot A.lift M"]); // Arm mündet in eine Fuß-Variante
+  expect(words("OFFEN")).toEqual(["O F.nest F.short E N"]); // ein verschachteltes F verschachtelt nicht noch einmal
+  expect(words("AUFTAKT")).toEqual(["A U F.nest T.short A K T"]); // gekürzter T-Arm, rechts frei
+});
+
 test("Unterschneidung: verbundene Paare stehen wie in der Engine, freie Paare mit der Lichtweite der App", () => {
   const k = new Map(data.kerning.map(([l, r, v]) => [`${l} ${r}`, v]));
   const step = (l: string, r: string) => byName.get(l)!.advance + (k.get(`${l} ${r}`) ?? 0);
-  const fl = data.expect.find((e) => e.text === "FLÄCHE")!.words[0];
-  for (let i = 1; i < fl.length; i++) expect(Math.abs(step(fl[i - 1].name, fl[i].name) - (fl[i].x - fl[i - 1].x))).toBeLessThanOrEqual(1);
+  const off = data.expect.flatMap((e) => e.words.flatMap((w) => w.slice(1).map((g, i) => [e.text, w[i].name, g.name, step(w[i].name, g.name) - (g.x - w[i].x)] as const)));
+  expect(off.filter(([, , , d]) => Math.abs(d) > 1)).toEqual([]); // in jedem Sollwort, auch hinter Varianten (T E.foot, T.short A)
   expect(k.get("H I")).toBeUndefined(); // zwei Stämme: Seitenabstände reichen, keine Unterschneidung nötig
 });

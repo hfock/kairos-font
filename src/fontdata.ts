@@ -91,7 +91,8 @@ export function fontData(version: string): FontData {
   const record = (type: string, l: Glyph, r: Glyph, dx: number) => {
     const j = { l, r, dx };
     joins.push(j);
-    if (l !== reg.get(keyOf(l.char, defaults(GLYPHS[l.char])))) l.role.left = true;
+    const dl = defaults(GLYPHS[l.char]); // links verbunden heißt: die eigene rechte Seite wurde verlängert (T bleibt frei)
+    if (OWN_RIGHT.some((k) => k in dl && Math.abs(l.inst.p[k] - dl[k]) > 1e-6)) l.role.left = true;
     if (r !== reg.get(keyOf(r.char, defaults(GLYPHS[r.char])))) r.role.right = true;
     if (type === "underrun") rules.under.push(j);
     if (type === "share") rules.term.push(j);
@@ -135,7 +136,11 @@ export function fontData(version: string): FontData {
   const kern = new Map<string, [string, string, number]>();
   for (const l of leftFree)
     for (const r of rightFree) kern.set(`${l.name} ${r.name}`, [l.name, r.name, kernFor(l.inst, r.inst, spacing(l.inst, placed(r), S.gap))]);
-  for (const j of joins) kern.set(`${j.l.name} ${j.r.name}`, [j.l.name, j.r.name, kernFor(j.l.inst, j.r.inst, j.dx)]);
+  for (const j of joins) {
+    // bleibt der rechte Partner unverändert (TH, CH), gilt der Abstand auch für seine links freien Varianten (E.foot, F.nest …)
+    const rs = j.r === base(j.r.char) ? all.filter((g) => g.char === j.r.char && !g.role.right) : [j.r];
+    for (const r of rs) kern.set(`${j.l.name} ${r.name}`, [j.l.name, r.name, kernFor(j.l.inst, r.inst, j.dx)]);
+  }
 
   // Glyphen: Grundzeichen, Varianten, Leerzeichen, Namens-Ligatur, .notdef
   const notdef = instance(PLACEHOLDER, defaults(PLACEHOLDER), S);
@@ -188,6 +193,7 @@ function features(chars: string[], reg: Map<string, Glyph>, fNest: Glyph, r: Rul
   const fnests = [...new Set([fNest, ...r.trim.map(([, , f]) => f)])].map((g) => g.name);
   out.push(`@FNEST = [${fnests.join(" ")}];`);
   out.push(`lookup NEST_LEFT {\n${[
+    "  ignore sub @FNEST F';", // ein verschachteltes F verschachtelt nicht noch einmal
     ...r.skip.map(([f, x, z]) => `  ignore sub ${f}' ${x} ${z};`),
     ...r.trim.map(([x, z, f]) => `  sub F' ${x} ${z} by ${f.name};`),
     `  sub F' [${nestX.join(" ")}] by ${fNest.name};`,
@@ -199,14 +205,15 @@ function features(chars: string[], reg: Map<string, Glyph>, fNest: Glyph, r: Rul
   out.push(`lookup UNDERRUN_LEFT {\n${uniq(r.under.map((j) => `  sub ${input(j.l)}' ${glyphName(j.r.char)} by ${j.l.name};`)).join("\n")}\n} UNDERRUN_LEFT;`);
   out.push(`lookup UNDERRUN_RIGHT {\n${uniq(r.under.map((j) => `  sub ${j.l.name} ${glyphName(j.r.char)}' by ${j.r.name};`)).join("\n")}\n} UNDERRUN_RIGHT;`);
   const termLeft = r.term.filter((j) => j.l.name !== input(j.l)); // T bleibt T: nur Unterschneidung
-  out.push(`lookup TERM_LEFT {\n${uniq(termLeft.map((j) => `  sub ${input(j.l)}' ${glyphName(j.r.char)} by ${j.l.name};`)).join("\n")}\n} TERM_LEFT;`);
+  const partner = (c: string) => `[${[...reg.values()].filter((g) => g.char === c && !g.role.right).map((g) => g.name).join(" ")}]`; // Grundglyphe samt links freier Varianten
+  out.push(`lookup TERM_LEFT {\n${uniq(termLeft.map((j) => `  sub ${input(j.l)}' ${partner(j.r.char)} by ${j.l.name};`)).join("\n")}\n} TERM_LEFT;`);
   out.push(`feature calt {\n  lookup NEST_LEFT;\n  lookup NEST_RIGHT;\n  lookup UNDERRUN_LEFT;\n  lookup UNDERRUN_RIGHT;\n  lookup TERM_LEFT;\n} calt;`);
   return out.join("\n") + "\n";
 }
 
 const TESTS: [string, Record<string, boolean>][] = [
   ["FLÄCHE", {}], ["fläche", {}], ["DIE FLÄCHE", {}], ["HAGEN AAD FOCK", {}], ["HAF", { dlig: true }], ["HAF", {}], ["HAFEN", { dlig: true }],
-  ["WIENER WERKSTÄTTE", {}], ["THEATER", {}], ["ZAUBER", {}],
+  ["WIENER WERKSTÄTTE", {}], ["THEATER", {}], ["ZAUBER", {}], ["GLAS", {}], ["TEAM", {}], ["OFFEN", {}], ["AUFTAKT", {}],
 ];
 
 /** Sollwerte: Glyphenfolge und Ursprünge je Wort wie die Engine; bei einem Wort zusätzlich die Striche für den Flächenvergleich. */
