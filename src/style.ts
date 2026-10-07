@@ -23,7 +23,7 @@ export const FLAECHE_1902: Style = {
   barHigh: 546,
   barLow: 154,
   gap: 56,
-  wordGap: 104,
+  wordGap: 136,
   clearance: 36,
   armGap: 20,
   nestGap: 152,

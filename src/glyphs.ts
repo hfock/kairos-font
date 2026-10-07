@@ -100,7 +100,7 @@ const glyphD: GlyphDef = {
 
 const glyphE: GlyphDef = {
   char: "E",
-  params: { h, w: R(200, 265, 330), bar: R(0, 0, 1), foot: R(0, 0, 300) },
+  params: { h, w: R(200, 276, 330), bar: R(0, 0, 1), foot: R(0, 0, 300) },
   draw(p, s) {
     const t = cTop(p, s), b = cBot(s), by = barY(p, s);
     return [stroke(p.w, t, L(0, t), L(0, b), L(p.w + p.foot, b)), stroke(0, by, L(0.8 * p.w, by))];
