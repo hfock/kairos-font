@@ -155,3 +155,14 @@ test("joinOptions: Wortgrenze hat keine Optionen", () => {
   expect(joinOptions(v, 2)).toEqual([]); // E | Leerzeichen
   expect(joinOptions(v, 4).map((j) => j.type)).toEqual(["none", "nest"]);
 });
+
+test("Wortabstand nach der Tinte, aber nie enger als zwischen den Wortkästen (wie im Font)", () => {
+  const step = (t: string) => {
+    const v = layoutLine(t, opts()).variants[0], i = v.glyphs.findIndex((g, k) => k && g.index !== v.glyphs[k - 1].index + 1);
+    const ext = (gs: typeof v.glyphs) => [Math.min(...gs.map((g) => g.x + g.inst.prof.minX)), Math.max(...gs.map((g) => g.x + g.inst.prof.maxX))];
+    return ext(v.glyphs.slice(i))[0] - ext(v.glyphs.slice(0, i))[1]; // Lücke zwischen den Wortkästen
+  };
+  expect(step("DA VOR")).toBeGreaterThanOrEqual(FLAECHE_1902.wordGap - 1); // sonst liest es sich als „DAVOR“
+  expect(step("AUF ALLE")).toBeGreaterThanOrEqual(FLAECHE_1902.wordGap - 1);
+  expect(Math.round(step("DIE FLÄCHE"))).toBe(FLAECHE_1902.wordGap); // senkrechte Seiten: Tinte und Kasten gleich
+});

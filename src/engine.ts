@@ -164,10 +164,13 @@ function finalScore(n: Node, s: Style): number {
 /** Wörter mit Wortabstand nebeneinandersetzen. */
 function assemble(parts: Node[], score: number, s: Style): Layout {
   const glyphs: Placed[] = [], extras: Stroke[] = [], joins: Record<number, Join> = {};
-  let prev: Profile | null = null;
+  let prev: Profile | null = null, last: Placed | null = null;
   for (const n of parts) {
     const local = mergeProfiles(n.placed.map((g) => ({ prof: g.inst.prof, x: g.x })));
-    const offset: number = prev ? gapOffset(prev, local, s.wordGap) : 0;
+    // nach der Tinte, aber nie enger als zwischen den Wortkästen wie im Font – sonst liest sich „DA VOR“ als „DAVOR“
+    const box = prev && last ? prev.maxX + s.wordGap + (last.inst.def.adjust?.right ?? 0) + (n.placed[0].inst.def.adjust?.left ?? 0) - local.minX : 0;
+    const offset: number = prev ? Math.max(gapOffset(prev, local, s.wordGap), box) : 0;
+    last = n.placed[n.placed.length - 1];
     glyphs.push(...n.placed.map((g) => ({ ...g, x: g.x + offset })));
     extras.push(...n.extras.map((e) => shift(e, offset)));
     Object.assign(joins, n.joins);

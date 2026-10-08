@@ -11,7 +11,7 @@ test("jedes Zeichen hat eine Grundglyphe; Kleinbuchstaben zeigen die Versalien, 
   expect(byName.get("Adieresis")!.unicodes).toEqual([0xc4, 0xe4]);
   expect(byName.get("uni1E9E")!.unicodes).toEqual([0x1e9e, 0xdf]);
   expect(byName.get("H_A_F")!.unicodes).toEqual([0xe000]);
-  expect(byName.get("space")!.advance).toBe(80); // 136 zwischen den Tintenkanten, wo beide Seiten senkrecht sind (Seitenabstände + 80); die App misst an der Tinte selbst – bekannte Abweichung, siehe Plan
+  expect(byName.get("space")!.advance).toBe(80); // 136 zwischen den Wortkästen (Seitenabstände + 80) – so eng setzt auch die App mindestens; nach der Tinte darf sie weiter setzen
   expect(data.glyphs.map((g) => g.name).filter((n) => !/^[A-Za-z0-9._]+$/.test(n))).toEqual([]); // gültige Glyphennamen (Adobe Glyph List)
 }, 20000);
 

@@ -46,7 +46,7 @@ Live: https://font.fock.rocks (Werkstatt) und https://font.fock.rocks/font (Font
 
 ## Bekannte Grenzen
 
-- Wortabstand: das Leerzeichen ist fest. Die App setzt Wörter nach der Tinte, der Font nach den Glyphenkästen; an offenen Seiten (etwa „AUF ALLE“, „DA VOR“) steht der Font bis zu ~170 Einheiten weiter.
+- Wortabstand: der Font setzt Wörter nach den Glyphenkästen (Leerzeichen fest), die App nach der Tinte, aber nie enger als der Font. Wo die Tinte mehr Luft verlangt (etwa „DI“ über eine Wortgrenze), steht der Font bis zu ~20 Einheiten enger.
 - Verbindungen: der Font entscheidet von links nach rechts, die Engine sucht die beste Lösung; selten weicht das ab (etwa „VARIATIONSKOEFFIZIENT“). Zweimal verschachteln (FF vor manchen Satzzeichen) kann der Font nicht.
 
 ## Lizenz
