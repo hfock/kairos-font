@@ -6,7 +6,7 @@
 | Projekt | HabUndGutFont (`~/Projekte/HabUndGutFont`) |
 | Grundlage | Spec M1 `2026-10-06-kairos-font-design.md` (§3, §4 M2, §9 Ausblick), Versalien `2026-10-07-kairos-versalien.md` |
 | Umfang | M2 ohne die schon fertigen Versalien |
-| Status | Entwurf zur Durchsicht |
+| Status | abgenommen (Hagen, 2026-10-08: Merge nach main freigegeben; live auf font.fock.rocks) |
 
 ## 1. Ziel
 
