@@ -84,6 +84,11 @@ def build() -> None:
     i.familyName, i.styleName, i.postscriptFontName = info["family"], info["style"], "KAIROSFont-Regular"
     i.versionMajor, i.versionMinor = 0, 200  # 0.200 = Version 0.2 (UFO zählt Tausendstel)
     i.openTypeNameVersion = f"Version {info['version']}"  # Zeitstempel dahinter: jeder Build ist für macOS eine neue Fassung
+    i.copyright = "Copyright (c) 2026, Hagen Aad Fock (https://font.fock.rocks)"
+    i.openTypeNameDesigner, i.openTypeNameDesignerURL = "Hagen Aad Fock", "https://font.fock.rocks"
+    i.openTypeNameLicense = "This Font Software is licensed under the SIL Open Font License, Version 1.1."
+    i.openTypeNameLicenseURL = "https://openfontlicense.org"
+    i.openTypeOS2Type = []  # installierbar: die OFL erlaubt Einbetten ohne Einschränkung
     i.openTypeNameUniqueID = f"KAIROSFont-Regular {info['version']}"  # je Build neu: macOS erkennt die neue Fassung
     i.unitsPerEm, i.capHeight, i.xHeight = info["unitsPerEm"], info["capHeight"], info["capHeight"]
     i.ascender, i.descender = info["ascender"], info["descender"]

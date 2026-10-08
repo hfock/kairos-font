@@ -10,6 +10,7 @@
       body { margin: 0; font: 14px/1.4 system-ui, sans-serif; color: var(--ink); background: #f6f1e7; }
       header, footer { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; padding: 10px 16px; }
       header { border-bottom: 1px solid var(--line); }
+      .fontlink { margin-left: auto; color: inherit; }
       footer { border-top: 1px solid var(--line); }
       main { display: grid; grid-template-columns: 1fr 270px; min-height: calc(100vh - 120px); }
       #stage { padding: 16px; overflow: auto; }
@@ -35,6 +36,7 @@
       <button id="savePreset">Als Vorlage speichern</button>
       <button id="exportPreset">Vorlage exportieren</button>
       <label class="row">Vorlage importieren <input id="importPreset" type="file" accept="application/json" /></label>
+      <a class="fontlink" href="./font">Font-Probe und Download</a>
     </header>
     <main>
       <section id="stage">
