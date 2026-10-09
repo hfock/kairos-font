@@ -161,7 +161,7 @@ export function fontData(version: string): FontData {
   const fea = features(reg, fNest!, rules);
   return {
     format: FORMAT,
-    info: { family: "KAIROS Font", style: "Regular", version, unitsPerEm: 1000, capHeight: S.capHeight, ascender: 760, descender: -240, stroke: S.stroke },
+    info: { family: "Neustift", style: "Regular", version, unitsPerEm: 1000, capHeight: S.capHeight, ascender: 760, descender: -240, stroke: S.stroke },
     glyphs,
     kerning: [...kern.values()].filter(([, , v]) => v !== 0),
     fea,

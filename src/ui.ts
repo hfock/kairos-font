@@ -431,7 +431,7 @@ function download(name: string, blob: Blob) {
 }
 const slug = (t: string) =>
   t.trim().toLowerCase().replace(/ä/g, "ae").replace(/ö/g, "oe").replace(/ü/g, "ue").replace(/ß/g, "ss")
-    .replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "kairos";
+    .replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "neustift";
 const exportSvg = () => (layout ? svgString(layout, state.style, { ink: state.ink, paper: state.transparent ? null : state.paper }) : null);
 
 $("exportSvg").addEventListener("click", () => {

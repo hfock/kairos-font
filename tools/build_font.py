@@ -2,7 +2,7 @@
 # requires-python = ">=3.11"
 # dependencies = ["fonttools[woff]>=4.66", "ufo2ft>=3.9", "ufoLib2>=0.18", "skia-pathops>=0.9"]
 # ///
-"""KAIROS Font bauen: build/kairos.json + build/features.fea → dist/KAIROSFont-Regular.otf und .woff2 (Spec M2 §5.2)."""
+"""Neustift bauen: build/kairos.json + build/features.fea → dist/Neustift-Regular.otf und .woff2 (Spec M2 §5.2)."""
 import json
 import sys
 from pathlib import Path
@@ -81,7 +81,7 @@ def build() -> None:
     info = data["info"]
     ufo = ufoLib2.Font()
     i = ufo.info
-    i.familyName, i.styleName, i.postscriptFontName = info["family"], info["style"], "KAIROSFont-Regular"
+    i.familyName, i.styleName, i.postscriptFontName = info["family"], info["style"], "Neustift-Regular"
     i.versionMajor, i.versionMinor = 0, 200  # 0.200 = Version 0.2 (UFO zählt Tausendstel)
     i.openTypeNameVersion = f"Version {info['version']}"  # Zeitstempel dahinter: jeder Build ist für macOS eine neue Fassung
     i.copyright = "Copyright (c) 2026, Hagen Aad Fock (https://font.fock.rocks)"
@@ -89,7 +89,7 @@ def build() -> None:
     i.openTypeNameLicense = "This Font Software is licensed under the SIL Open Font License, Version 1.1."
     i.openTypeNameLicenseURL = "https://openfontlicense.org"
     i.openTypeOS2Type = []  # installierbar: die OFL erlaubt Einbetten ohne Einschränkung
-    i.openTypeNameUniqueID = f"KAIROSFont-Regular {info['version']}"  # je Build neu: macOS erkennt die neue Fassung
+    i.openTypeNameUniqueID = f"Neustift-Regular {info['version']}"  # je Build neu: macOS erkennt die neue Fassung
     i.unitsPerEm, i.capHeight, i.xHeight = info["unitsPerEm"], info["capHeight"], info["capHeight"]
     i.ascender, i.descender = info["ascender"], info["descender"]
     i.openTypeOS2TypoAscender, i.openTypeOS2TypoDescender, i.openTypeOS2TypoLineGap = info["ascender"], info["descender"], 0
@@ -110,10 +110,10 @@ def build() -> None:
     ufo.features.text = (BUILD / "features.fea").read_text()
     otf = ufo2ft.compileOTF(ufo, removeOverlaps=False)  # Konturen sind schon vereinigt
     DIST.mkdir(exist_ok=True)
-    otf.save(DIST / "KAIROSFont-Regular.otf")
+    otf.save(DIST / "Neustift-Regular.otf")
     otf.flavor = "woff2"
-    otf.save(DIST / "KAIROSFont-Regular.woff2")
-    print(f"dist/KAIROSFont-Regular.otf + .woff2: {len(data['glyphs'])} Glyphen")
+    otf.save(DIST / "Neustift-Regular.woff2")
+    print(f"dist/Neustift-Regular.otf + .woff2: {len(data['glyphs'])} Glyphen")
 
 
 if __name__ == "__main__":

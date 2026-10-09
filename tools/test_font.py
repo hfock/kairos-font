@@ -15,7 +15,7 @@ from fontTools.ttLib import TTFont
 sys.path.insert(0, str(Path(__file__).parent))
 from build_font import BUILD, DIST, outline  # noqa: E402  gleiche Strich-Strecke wie der Build
 
-OTF = DIST / "KAIROSFont-Regular.otf"
+OTF = DIST / "Neustift-Regular.otf"
 fails: list[str] = []
 
 

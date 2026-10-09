@@ -1,5 +1,5 @@
 // Testseite: Text in der Webfont neben dem Engine-Ergebnis (Spec M2 §5.5)
-import fontUrl from "../dist/KAIROSFont-Regular.woff2";
+import fontUrl from "../dist/Neustift-Regular.woff2";
 import { layoutLine } from "./engine";
 import { svgString } from "./render";
 import { FLAECHE_1902 } from "./style";
@@ -17,7 +17,7 @@ function update() {
   if (svg) for (const k of ["width", "height"]) svg.setAttribute(k, String(Number(svg.getAttribute(k)) * PX));
 }
 
-const face = new FontFace("KAIROS Font", `url(${fontUrl})`);
+const face = new FontFace("Neustift", `url(${fontUrl})`);
 document.fonts.add(face);
 face.load().then(
   () => ($("status").textContent = ""),

@@ -1,6 +1,6 @@
 Lizenzen / Licenses
 
-- Font (KAIROS Font: dist/KAIROSFont-Regular.otf und .woff2, und die Glyphen-Daten
+- Font (Neustift: dist/Neustift-Regular.otf und .woff2, und die Glyphen-Daten
   in src/glyphs.ts, aus denen er entsteht): SIL Open Font License 1.1, siehe OFL.txt.
 - Code (alles andere unter src/, tools/, test/, *.html): MIT, siehe unten.
 - reference/: Aufnahmen des Blatts „DIE FLÄCHE“ (Die Fläche, Bd. I, um 1902,

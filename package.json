@@ -8,6 +8,6 @@
     "typecheck": "bunx tsc --noEmit -p .",
     "sheet": "bun tools/sheet.ts",
     "font": "bun tools/export-font.ts && uv run tools/build_font.py && uv run tools/test_font.py",
-    "web": "bun run font && rm -rf web && bun build ./index.html ./font.html --outdir web --minify && cp dist/KAIROSFont-Regular.otf dist/KAIROSFont-Regular.woff2 OFL.txt web/"
+    "web": "bun run font && rm -rf web && bun build ./index.html ./font.html --outdir web --minify && cp dist/Neustift-Regular.otf dist/Neustift-Regular.woff2 OFL.txt web/"
   }
 }
