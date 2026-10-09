@@ -6,7 +6,7 @@
 | Projekt | HabUndGutFont (`~/Projekte/HabUndGutFont`), Schrift „Neustift“ (bis 2026-10-08 „KAIROS Font“) |
 | Grundlage | Spec M1 `2026-10-06-kairos-font-design.md` (§3 Kleinbuchstaben-Eingabe, §4 M4), Spec M2 `2026-10-07-kairos-font-m2-design.md` |
 | Umfang | a–z, ä ö ü, ß in App und Font, mit Verschränkung |
-| Status | Entwurf zur Durchsicht |
+| Status | freigegeben (Hagen, 2026-10-09) |
 
 ## 1. Ziel
 
