@@ -56,12 +56,12 @@ Von Hagen am 2026-10-09 an Wegwerf-Prototypen gewählt; die Bilder liegen unter 
 | c | runder Bogen, rechts offen; oberes Ende waagrecht (dockt beim „ch“ an) |
 | d | runder Bauch, Stamm rechts bis 700 |
 | e | runder Bogen mit Querstrich knapp über der halben x-Höhe, rechts unten offen |
-| f | Stamm, oben Haken nach rechts bis 700, Querstrich auf x-Höhe |
+| f | Stamm bei 50, oben Haken nach rechts bis 700, Querstrich auf x-Höhe (links 50, rechts 100 vom Stamm) |
 | g | wie a, rechter Stamm bis −130, Schwanz nach links |
 | h | Stamm bis 700, Bogen wie n |
 | i | Stamm bis x-Höhe, Punkt |
 | j | Stamm bis −130 mit Schwanz nach links, Punkt |
-| k | Stamm bis 700, Arm und Bein treffen sich auf halber x-Höhe (Vorbild prüfen) |
+| k | Stamm bis 700, Arm und Bein treffen sich auf halber x-Höhe; der Arm läuft schräg und wird auf der x-Höhe waagrecht beschnitten |
 | l | Stamm bis 700 |
 | m | Stamm, zwei Bögen |
 | n | Stamm, Bogen, Stamm |
@@ -70,7 +70,7 @@ Von Hagen am 2026-10-09 an Wegwerf-Prototypen gewählt; die Bilder liegen unter 
 | q | runder Bauch, Stamm rechts bis −130 |
 | r | Stamm, kurzer Bogenansatz oben rechts |
 | s | oberer und unterer Bogen mit Schwung, vom S abgeleitet |
-| t | Stamm bis ~470, Querstrich auf x-Höhe |
+| t | Stamm bei 50 bis ~470, Querstrich auf x-Höhe (links 50, rechts 100 vom Stamm) |
 | u | Stamm, Bogen unten wie U, rechter Stamm bis zur Grundlinie |
 | v | wie V, flache Spitze |
 | w | wie W |
@@ -78,7 +78,7 @@ Von Hagen am 2026-10-09 an Wegwerf-Prototypen gewählt; die Bilder liegen unter 
 | y | wie v, rechter Arm bis −130 (Vorbild prüfen) |
 | z | Arm, Diagonale, Fuß wie Z |
 | ä ö ü | a o u mit Punkten |
-| ß | Stamm bis 700, oberer Bogen, unteres Segel wie ẞ (Vorbild prüfen) |
+| ß | wie ẞ in schmalerer Breite: Stamm bis 700, oben eckig, unteres Segel wie ẞ |
 
 ### 4.3 Vorbilder
 
@@ -104,7 +104,7 @@ Vor den neuen Zeichen: Der Export speichert je Layout nur noch Zeichen, Regler u
 | Bogenende in den Stamm | „ch“, „ck“ („ich“, „Fläche“) | wie „CH“: oberes Ende des c mündet in den Stamm des Nachbarn |
 | Querstrich teilen | „ft“, „tt“, „ff“ („Stift“, „Mitte“, „Kaffee“) | neu: Querstriche von f und t auf x-Höhe laufen zu einem Strich zusammen |
 | Unterlänge unter den Nachbarn | „ag“, „ig“, „ey“ („Hagen“, „Tag“) | neu, Unterfahren nach links: der Schwanz von g, j, y verlängert sich unter den vorigen Buchstaben |
-| f-Haken kürzen | „fl“, „fh“ („Pflicht“) | wie der gekürzte F-Arm: der Haken endet vor der Oberlänge des Nachbarn |
+| f-Haken kürzen | „fT“, „fV“, „f?“ | wie der gekürzte F-Arm: der Haken endet vor einem hohen Nachbarn; „fl“ („Pflicht“) bleibt mit normalem Abstand (Hagen, 2026-10-10) |
 
 - Querstrich teilen und Unterlänge kosten wie Verschachteln (`WEIGHTS` 0,2): sie greifen bei Verschränkung 0,5 von selbst und kommen in den Font.
 - Stämme teilen (etwa „nn“) wie bei den Versalien nur in der App bei höherer Verschränkung, nicht im Font.
