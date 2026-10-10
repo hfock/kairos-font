@@ -51,7 +51,7 @@ Live: https://font.fock.rocks (Werkstatt) und https://font.fock.rocks/font (Font
 
 - Wortabstand: der Font setzt Wörter nach den Glyphenkästen (Leerzeichen fest), die App nach der Tinte, aber nie enger als der Font. Wo die Tinte mehr Luft verlangt (etwa „DI“ über eine Wortgrenze), steht der Font bis zu ~20 Einheiten enger.
 - Verbindungen: der Font entscheidet von links nach rechts, die Engine sucht die beste Lösung; selten weicht das ab (etwa „VARIATIONSKOEFFIZIENT“). Zweimal verschachteln (FF vor manchen Satzzeichen) kann der Font nicht.
-- Kleinbuchstaben: auch hier nur eine Verschachtelung (FF vor einem Buchstaben), und einige seltene Ketten setzt der Font anders als die App (etwa eine Unterlänge hinter einer veränderten Glyphe wie in ‚ajg‘).
+- Kleinbuchstaben: auch hier nur eine Verschachtelung (FF vor einem Buchstaben), und einige seltene Ketten setzt der Font anders als die App (etwa eine Unterlänge hinter Apostroph oder Strich wie in „h’g“ oder „E-g“).
 
 ## Lizenz
 
