@@ -71,7 +71,7 @@ const placed = (g: { char: string; inst: Inst }) => {
 
 /** Alle Font-Daten aus der Engine. */
 export function fontData(version: string): FontData {
-  const chars = Object.keys(GLYPHS);
+  const chars = Object.keys(GLYPHS).filter((c) => c.toUpperCase() === c); // Kleinbuchstaben kommen erst mit Task 4 (M4) in den Font
   const reg = new Map<string, Glyph>();
   const keyOf = (c: string, p: Params) => c + JSON.stringify(Object.keys(GLYPHS[c].params).map((k) => Math.round(p[k] * 100) / 100));
   /** Glyphe für Zeichen c mit Reglern p; Varianten heißen nach den geänderten Reglern. */

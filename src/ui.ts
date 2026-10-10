@@ -2,7 +2,7 @@ import dieFlaeche from "../presets/die-flaeche.json";
 import hagen from "../presets/hagen-aad-fock.json";
 import overlayUrl from "../reference/die-flaeche-overlay.jpg";
 import { joinOptions, layoutLine, type Layout, type Placed } from "./engine";
-import type { Params } from "./glyphs";
+import { cutTop, type Params } from "./glyphs";
 import { svgString, type Overlay } from "./render";
 import { barLink, type Join } from "./rules";
 import { cleanPreset, cleanState, type Preset, type State } from "./presets";
@@ -137,9 +137,10 @@ function renderPreview() {
 
 /** Griffe in Buchstabenkoordinaten: Höhe, Breite, Balken, Fuß, oberer Arm. */
 function handles(g: Placed): { kind: HandleKind; x: number; y: number }[] {
-  const s = state.style, p = g.inst.p, has = g.inst.def.params, { minX, maxX } = g.inst.prof, top = s.capHeight * (p.h ?? 1);
+  const s = state.style, p = g.inst.p, has = g.inst.def.params, { minX, maxX } = g.inst.prof, top = cutTop(g.inst.def, p, s);
   const out: { kind: HandleKind; x: number; y: number }[] = has.h ? [{ kind: "h", x: (minX + maxX) / 2, y: top }] : []; // Satzzeichen: kein Höhengriff
-  if (has.w) out.push({ kind: "w", x: maxX, y: top / 2 });
+  const inkTop = g.inst.ink.reduce((m, q) => Math.max(m, q.y), -Infinity); // Kleinbuchstaben ohne Oberlänge enden unter cutTop
+  if (has.w) out.push({ kind: "w", x: maxX, y: Math.min(top, inkTop) / 2 });
   for (const d of g.inst.docks) {
     if (d.kind === "bar" && has.bar) out.push({ kind: "bar", x: (d.x0 + d.x1) / 2, y: d.y });
     if (d.kind === "foot" && has.foot) out.push({ kind: "foot", x: d.end, y: s.stroke / 2 });

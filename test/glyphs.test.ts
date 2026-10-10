@@ -190,3 +190,50 @@ test("@: die Beine des kleinen A laufen unten lotrecht aus (waagrechter Fuß ohn
   expect(legs.segs[0].p.x).toBe(legs.start.x);
   expect(legs.segs[4].p.x).toBe(legs.segs[3].p.x);
 });
+
+const LOWER = [..."abcdefghijklmnopqrstuvwxyzäöüß"];
+const ASC = new Set([..."bdfhklß"]), DESC = new Set([..."gjpqy"]);
+
+test("Kleinbuchstaben a–z, äöü, ß sind entworfen, ohne Höhenregler", () => {
+  expect(LOWER.filter((c) => !GLYPHS[c])).toEqual([]);
+  expect(LOWER.filter((c) => GLYPHS[c]?.params.h)).toEqual([]);
+});
+
+test("Kleinbuchstaben: Tinte zwischen Unterlänge und Oberkante, x-Höhe 300", () => {
+  for (const c of LOWER) {
+    const g = GLYPHS[c];
+    for (const p of variants(g)) {
+      const pts = ink(g.draw(p, S)).filter((q) => q.y >= -(g.desc ?? 0) - 0.5 && q.y <= cutTop(g, p, S) + 0.5);
+      const top = Math.max(...pts.map((q) => q.y)), bottom = Math.min(...pts.map((q) => q.y));
+      const want = ASC.has(c) ? S.capHeight : c === "t" ? 470 : c === "i" || c === "j" || "äöü".includes(c) ? S.xHeight + 90 + S.stroke / 2 : S.xHeight;
+      expect([c, Math.abs(top - want) <= (c === "t" ? 30 : 1.5)]).toEqual([c, true]);
+      expect([c, Math.abs(bottom - (DESC.has(c) ? -130 : 0)) <= 1.5]).toEqual([c, true]);
+      // Ausnahme: die nach links verlängerte Unterlänge (g, j, y unter dem Nachbarn, Stufe 2) ragt gewollt über den linken Bezug
+      const stretched = p.tail < (g.params.tail?.def ?? -Infinity);
+      if (!stretched) expect([c, Math.min(...pts.map((q) => q.x)) >= -1.1 * S.stroke]).toEqual([c, true]);
+    }
+  }
+});
+
+test("Punkte über der x-Höhe: Quadrat, Mitte 90 darüber, armGap Luft zur übrigen Tinte", () => {
+  for (const c of [..."ijäöü"]) {
+    const g = GLYPHS[c], st = g.draw(defaults(g), S);
+    const dots = st.filter((x) => Math.abs(x.start.y - (S.xHeight + 90)) < 0.5 && x.segs.length === 1);
+    expect([c, dots.length]).toEqual([c, c === "i" || c === "j" ? 1 : 2]);
+    const rest = ink(st.filter((x) => !dots.includes(x))), dotInk = ink(dots);
+    expect([c, minDist(rest, 0, dotInk, 0, 200) >= S.armGap]).toEqual([c, true]);
+  }
+});
+
+test("Andockstellen der Kleinbuchstaben", () => {
+  expect(kinds("a")).toEqual(["stem:right"]);
+  expect(kinds("c")).toEqual(["terminal"]);
+  expect(kinds("f")).toEqual(["cross"]);
+  expect(kinds("t")).toEqual(["cross"]);
+  expect(kinds("g")).toEqual(["tail"]);
+  expect(kinds("j")).toEqual(["tail"]);
+  expect(kinds("y")).toEqual(["tail"]);
+  expect(kinds("h")).toEqual(["stem:left", "stem:right"]);
+  expect(kinds("n")).toEqual(["stem:left", "stem:right"]);
+  expect(kinds("i")).toEqual(["stem:left"]);
+});

@@ -8,6 +8,9 @@ const INKSCAPE = "/Applications/Inkscape.app/Contents/MacOS/inkscape";
 const jobs: [string, string, number][] = [
   ["glyphen", "A B C D E F G H I J K L M N O", 0],
   ["glyphen-2", "P Q R S T U V W X Y Z Ä Ö Ü ẞ", 0],
+  ["glyphen-klein", "a b c d e f g h i j k l m n o", 0],
+  ["glyphen-klein-2", "p q r s t u v w x y z ä ö ü ß", 0],
+  ["woerter-klein", "Hagen Spiegel Tafel Stift", 0],
   ["wiener-werkstaette", "WIENER WERKSTÄTTE", 0.5],
   ["ziffern", "0 1 2 3 4 5 6 7 8 9", 0],
   ["zeichen", ". , : ; ! ? - – ( ) / & ' ’ \" „ “ ‚ ‘ « » € % @ # + = * § … \uE000", 0],

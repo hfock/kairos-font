@@ -308,17 +308,17 @@ const glyphR: GlyphDef = {
   ],
 };
 
+/** S-Linie: Kopf wie beim C (Ecke oben links, Radius r), Fuß wie beim D (Ecke unten rechts, Radius rb), dazwischen ein Schwung, unten bauchiger. */
+function swash(w: number, t: number, b: number, r: number, rb: number): Stroke {
+  const k = KAPPA * r, y0 = t - r, y1 = b + rb, span = y0 - y1;
+  return stroke(0.85 * w, t, L(r, t), C(r - k, t, 0, t - r + k, 0, y0), C(0, y0 - 0.35 * span, w, y1 + 0.7 * span, w, y1),
+    C(w, b + rb * (1 - KAPPA), w - rb * (1 - KAPPA), b, w - rb, b), L(0, b));
+}
+
 const glyphS: GlyphDef = {
   char: "S",
   params: { h, w: R(180, 230, 290) },
-  draw(p, s) {
-    // Kopf wie beim C (Ecke oben links), Fuß wie beim D (Ecke unten rechts), dazwischen ein Schwung, unten bauchiger
-    const t = cTop(p, s), b = cBot(s), r = 0.143 * inkTop(p, s), k = KAPPA * r, rb = 47 * p.h, y0 = t - r, y1 = b + rb, span = y0 - y1;
-    return [
-      stroke(0.85 * p.w, t, L(r, t), C(r - k, t, 0, t - r + k, 0, y0), C(0, y0 - 0.35 * span, p.w, y1 + 0.7 * span, p.w, y1),
-        C(p.w, b + rb * (1 - KAPPA), p.w - rb * (1 - KAPPA), b, p.w - rb, b), L(0, b)),
-    ];
-  },
+  draw: (p, s) => [swash(p.w, cTop(p, s), cBot(s), 0.143 * inkTop(p, s), 47 * p.h)],
   docks: () => [],
 };
 
@@ -789,6 +789,306 @@ const glyphHAF: GlyphDef = {
   docks: () => [],
 };
 
+// ── Kleinbuchstaben (M4) ──
+
+const DESC = 130; // Unterlänge (Tinte), so tief wie das Komma
+const xMid = (s: Style) => s.xHeight - s.stroke / 2; // Mittellinie oben auf der x-Höhe
+const aMid = (s: Style) => s.capHeight - s.stroke / 2; // Mittellinie oben auf der Oberlänge (= Versalhöhe)
+const dMid = (s: Style) => -DESC + s.stroke / 2; // Mittellinie unten auf der Unterlänge
+const stem = (x: number, y0: number, y1: number) => stroke(x, y0, L(x, y1));
+const TAIL = 60; // Radius des Schwanzes von g und j
+const STEM_X = 60; // Stamm von f und t; der Querstrich beginnt bei x = 0
+const CROSS = 120; // Querstrich von f und t endet ohne Verlängerung hier (beidseits 60 um den Stamm)
+
+/** Runder Bauch zwischen Grundlinie und x-Höhe: Halbkreise oben und unten wie beim O. */
+const ring = (w: number, s: Style) => oval(0, cBot(s), xMid(s), w);
+
+/** Bogen wie beim n: aus dem Stamm bei x0 als Halbkreis über die x-Höhe, rechts senkrecht hinab zur Grundlinie. */
+function arch(x0: number, w: number, s: Style): Stroke {
+  const t = xMid(s), r = w / 2, k = KAPPA * r;
+  return stroke(x0, t - r, C(x0, t - r + k, x0 + r - k, t, x0 + r, t), C(x0 + r + k, t, x0 + w, t - r + k, x0 + w, t - r), L(x0 + w, 0));
+}
+
+/** Unterlänge: von (x, y0) senkrecht hinab, Viertelkreis nach links auf die Unterlänge, waagrecht bis end. */
+function tail(x: number, y0: number, end: number, s: Style): Stroke {
+  const y = dMid(s), k = KAPPA * TAIL;
+  return stroke(x, y0, L(x, y + TAIL), C(x, y + TAIL - k, x - TAIL + k, y, x - TAIL, y), L(end, y));
+}
+
+/** Endpunkt eines schrägen Strichs von (x0, y0) über (x1, y1) hinaus: der Beschnitt bei y1 schneidet dann waagrecht (wie beim V und X). */
+function past(x0: number, y0: number, x1: number, y1: number, s: Style): Pt {
+  const dx = x1 - x0, dy = y1 - y0, f = capDrop(Math.abs(dx), Math.abs(dy), s) / Math.abs(dy);
+  return { x: x1 + dx * f, y: y1 + dy * f };
+}
+
+/** Umlautpunkte der Kleinbuchstaben: Mitte 90 über der x-Höhe, bei einem Viertel und drei Vierteln der Breite. */
+const lowDots = (w: number, s: Style) => dots(s.xHeight + 90, w / 4, (3 * w) / 4, s);
+
+const glyph_a: GlyphDef = {
+  char: "a",
+  params: { w: R(140, 170, 210) },
+  draw: (p, s) => [ring(p.w, s), stem(p.w, 0, s.xHeight)], // einstöckig: runder Bauch, Stamm rechts
+  docks: (p) => [{ kind: "stem", side: "right", x: p.w }],
+};
+
+const glyph_ae: GlyphDef = { ...glyph_a, char: "ä", draw: (p, s) => [...glyph_a.draw(p, s), ...lowDots(p.w, s)] };
+
+const glyph_b: GlyphDef = {
+  char: "b",
+  params: { w: R(140, 170, 210) },
+  draw: (p, s) => [stem(0, 0, s.capHeight), ring(p.w, s)],
+  docks: () => [{ kind: "stem", side: "left", x: 0 }],
+};
+
+const glyph_c: GlyphDef = {
+  char: "c",
+  params: { w: R(130, 160, 200), term: R(0, 0, 250) },
+  draw(p, s) {
+    // linke Hälfte des o, beide Enden waagrecht; das obere läuft beim Strich-Teilen bis in den Nachbarstamm („ch“)
+    const t = xMid(s), b = cBot(s), r = p.w / 2, k = KAPPA * r;
+    return [stroke(p.w + p.term, t, L(r, t), C(r - k, t, 0, t - r + k, 0, t - r), L(0, b + r), C(0, b + r - k, r - k, b, r, b), L(p.w, b))];
+  },
+  docks: (p, s) => [{ kind: "terminal", topEnd: p.w + p.term, y: xMid(s) }],
+  close: (p, x) => ({ ...p, term: Math.max(0, x - p.w) }),
+  adjust: { left: -10 },
+};
+
+const glyph_d: GlyphDef = {
+  char: "d",
+  params: { w: R(140, 170, 210) },
+  draw: (p, s) => [ring(p.w, s), stem(p.w, 0, s.capHeight)],
+  docks: (p) => [{ kind: "stem", side: "right", x: p.w }],
+};
+
+const glyph_e: GlyphDef = {
+  char: "e",
+  params: { w: R(140, 170, 210) },
+  draw(p, s) {
+    // vom unteren Ende (rechts, waagrecht) links herum über die x-Höhe, rechts hinab bis zum Querstrich, der in die linke Flanke läuft
+    const t = xMid(s), b = cBot(s), r = p.w / 2, k = KAPPA * r, y = 0.53 * s.xHeight; // Querstrich knapp über der halben x-Höhe
+    return [
+      stroke(p.w, b, L(r, b), C(r - k, b, 0, b + r - k, 0, b + r), L(0, t - r), C(0, t - r + k, r - k, t, r, t), C(r + k, t, p.w, t - r + k, p.w, t - r),
+        L(p.w, y), L(0, y)),
+    ];
+  },
+  docks: () => [],
+  adjust: { left: -10 },
+};
+
+const glyph_f: GlyphDef = {
+  char: "f",
+  params: { hook: R(45, 110, 160), cross: R(0, 0, 250) },
+  draw(p, s) {
+    // Stamm bis unter die Oberlänge, Viertelkreis in den Haken nach rechts; Querstrich auf der x-Höhe
+    const t = aMid(s), r = Math.min(p.hook, 60), k = KAPPA * r, y = xMid(s);
+    const hook = [L(STEM_X, t - r), C(STEM_X, t - r + k, STEM_X + r - k, t, STEM_X + r, t), ...(p.hook > r ? [L(STEM_X + p.hook, t)] : [])];
+    return [stroke(STEM_X, 0, ...hook), stroke(0, y, L(CROSS + p.cross, y))];
+  },
+  docks: (p, s) => [{ kind: "cross", y: xMid(s), x0: 0, x1: CROSS + p.cross }],
+  extend: (p, x) => ({ ...p, cross: Math.max(0, x - CROSS) }),
+  trimTop: (p, end) => ({ ...p, hook: Math.max(45, Math.min(end - STEM_X, p.hook)) }),
+};
+
+const glyph_g: GlyphDef = {
+  char: "g",
+  params: { w: R(140, 170, 210), tail: R(-400, 40, 40) },
+  desc: DESC,
+  draw: (p, s) => [ring(p.w, s), tail(p.w, s.xHeight, p.tail, s)], // wie a, der Stamm läuft in den Schwanz nach links
+  docks: (p) => [{ kind: "tail", end: p.tail }],
+  tailTo: (p, x) => ({ ...p, tail: Math.min(40, x) }),
+};
+
+const glyph_h: GlyphDef = {
+  char: "h",
+  params: { w: R(140, 170, 210) },
+  draw: (p, s) => [stem(0, 0, s.capHeight), arch(0, p.w, s)],
+  docks: (p) => [{ kind: "stem", side: "left", x: 0 }, { kind: "stem", side: "right", x: p.w }],
+};
+
+const glyph_i: GlyphDef = {
+  char: "i",
+  params: fixed,
+  draw: (_p, s) => [stem(0, 0, s.xHeight), square(0, s.xHeight + 90, s)],
+  docks: () => [{ kind: "stem", side: "left", x: 0, solo: true }],
+};
+
+const glyph_j: GlyphDef = {
+  char: "j",
+  params: { tail: R(-400, 20, 20) },
+  desc: DESC,
+  draw: (p, s) => [tail(100, s.xHeight, p.tail, s), square(100, s.xHeight + 90, s)],
+  docks: (p) => [{ kind: "tail", end: p.tail }],
+  tailTo: (p, x) => ({ ...p, tail: Math.min(20, x) }),
+};
+
+const glyph_k: GlyphDef = {
+  char: "k",
+  params: { w: R(130, 160, 200) },
+  draw(p, s) {
+    // Arm und Bein treffen sich auf halber x-Höhe am Stamm; der Arm biegt auf der x-Höhe in ein waagrechtes Ende (kein schräger Schnitt darüber)
+    const j = s.xHeight / 2, drop = capDrop(p.w, j, s);
+    return [stem(0, 0, s.capHeight), stroke(0, j, L(p.w - 40, xMid(s)), L(p.w, xMid(s))), stroke(0, j, L(p.w * (1 + drop / j), -drop))];
+  },
+  docks: () => [{ kind: "stem", side: "left", x: 0 }],
+};
+
+const glyph_l: GlyphDef = {
+  char: "l",
+  params: fixed,
+  draw: (_p, s) => [stem(0, 0, s.capHeight)],
+  docks: () => [{ kind: "stem", side: "left", x: 0, solo: true }],
+};
+
+const glyph_m: GlyphDef = {
+  char: "m",
+  params: { w: R(240, 300, 360) },
+  draw: (p, s) => [stem(0, 0, s.xHeight), arch(0, p.w / 2, s), arch(p.w / 2, p.w / 2, s)],
+  docks: (p) => [{ kind: "stem", side: "left", x: 0 }, { kind: "stem", side: "right", x: p.w }],
+};
+
+const glyph_n: GlyphDef = {
+  char: "n",
+  params: { w: R(140, 170, 210) },
+  draw: (p, s) => [stem(0, 0, s.xHeight), arch(0, p.w, s)],
+  docks: (p) => [{ kind: "stem", side: "left", x: 0 }, { kind: "stem", side: "right", x: p.w }],
+};
+
+const glyph_o: GlyphDef = {
+  char: "o",
+  params: { w: R(150, 180, 220) },
+  draw: (p, s) => [ring(p.w, s)],
+  docks: () => [],
+  adjust: { left: -10, right: -10 },
+};
+
+const glyph_oe: GlyphDef = { ...glyph_o, char: "ö", draw: (p, s) => [ring(p.w, s), ...lowDots(p.w, s)] };
+
+const glyph_p: GlyphDef = {
+  char: "p",
+  params: { w: R(140, 170, 210) },
+  desc: DESC,
+  draw: (p, s) => [stem(0, -DESC, s.xHeight), ring(p.w, s)],
+  docks: () => [{ kind: "stem", side: "left", x: 0 }],
+};
+
+const glyph_q: GlyphDef = {
+  char: "q",
+  params: { w: R(140, 170, 210) },
+  desc: DESC,
+  draw: (p, s) => [ring(p.w, s), stem(p.w, -DESC, s.xHeight)],
+  docks: () => [],
+};
+
+const glyph_r: GlyphDef = {
+  char: "r",
+  params: { w: R(90, 120, 160) },
+  draw(p, s) {
+    const t = xMid(s), r = 85, k = KAPPA * r; // Bogenansatz wie beim n in Startbreite (170 / 2), Ende waagrecht
+    return [stem(0, 0, s.xHeight), stroke(0, t - r, C(0, t - r + k, r - k, t, r, t), L(p.w, t))];
+  },
+  docks: () => [{ kind: "stem", side: "left", x: 0 }],
+};
+
+const glyph_s: GlyphDef = {
+  char: "s",
+  params: { w: R(130, 150, 190) },
+  draw: (p, s) => [swash(p.w, xMid(s), cBot(s), 60, 45)], // S-Linie auf x-Höhe; Ecken runder als beim verkleinerten S, sonst wird der Fuß spitz
+  docks: () => [],
+};
+
+const glyph_t: GlyphDef = {
+  char: "t",
+  params: { cross: R(0, 0, 250) },
+  draw: (p, s) => [stem(STEM_X, 0, 470), stroke(0, xMid(s), L(CROSS + p.cross, xMid(s)))],
+  docks: (p, s) => [{ kind: "cross", y: xMid(s), x0: 0, x1: CROSS + p.cross }],
+  extend: (p, x) => ({ ...p, cross: Math.max(0, x - CROSS) }),
+};
+
+const glyph_u: GlyphDef = {
+  char: "u",
+  params: { w: R(140, 170, 210) },
+  draw: (p, s) => glyph_n.draw(p, s).map((st) => mapPts(st, (q) => ({ x: p.w - q.x, y: s.xHeight - q.y }))), // n um 180° gedreht
+  docks: (p) => [{ kind: "stem", side: "left", x: 0 }, { kind: "stem", side: "right", x: p.w }],
+};
+
+const glyph_ue: GlyphDef = { ...glyph_u, char: "ü", draw: (p, s) => [...glyph_u.draw(p, s), ...lowDots(p.w, s)] };
+
+const glyph_v: GlyphDef = {
+  char: "v",
+  params: { w: R(150, 190, 240) },
+  top: (s) => s.xHeight,
+  draw(p, s) {
+    const b = cBot(s), run = (p.w - s.apexW) / 2, l = past(run, b, 0, s.xHeight, s), r = past(p.w - run, b, p.w, s.xHeight, s);
+    return [stroke(l.x, l.y, L(run, b), L(p.w - run, b), L(r.x, r.y))]; // wie V mit flacher Spitze
+  },
+  docks: () => [],
+};
+
+const glyph_w: GlyphDef = {
+  char: "w",
+  params: { w: R(240, 290, 350) },
+  top: (s) => s.xHeight,
+  draw(p, s) {
+    // wie W: zwei Stämme, dazwischen die flache Spitze auf der oberen Balkenlinie (verhältnisgleich zur x-Höhe)
+    const c = p.w / 2, a = s.apexW / 2, vy = (s.barHigh / s.capHeight) * s.xHeight;
+    return [stroke(0, s.xHeight, L(0, 0), L(c - a, vy), L(c + a, vy), L(p.w, 0), L(p.w, s.xHeight))];
+  },
+  docks: () => [],
+};
+
+const glyph_x: GlyphDef = {
+  char: "x",
+  params: { w: R(150, 180, 230) },
+  top: (s) => s.xHeight,
+  draw(p, s) {
+    // zwei Geraden, Kreuzung auf halber x-Höhe; Enden knapp über x-Höhe und unter die Grundlinie, dort waagrecht beschnitten
+    const a = past(p.w, 0, 0, s.xHeight, s), b = past(0, s.xHeight, p.w, 0, s);
+    return [stroke(a.x, a.y, L(b.x, b.y)), stroke(p.w - a.x, a.y, L(p.w - b.x, b.y))];
+  },
+  docks: () => [],
+};
+
+const glyph_y: GlyphDef = {
+  char: "y",
+  params: { w: R(150, 190, 240), tail: R(-400, 0, 0) },
+  top: (s) => s.xHeight,
+  desc: DESC,
+  draw(p, s) {
+    // v ohne flache Spitze: der rechte Arm läuft gerade weiter bis zur Unterlänge und endet waagrecht nach links
+    const b = cBot(s), y = dMid(s), c = p.w / 2, xb = c - ((p.w - c) * (b - y)) / (s.xHeight - b);
+    const l = past(c, b, 0, s.xHeight, s), r = past(xb, y, p.w, s.xHeight, s);
+    return [stroke(r.x, r.y, L(xb, y), L(p.tail, y)), stroke(l.x, l.y, L(c, b))];
+  },
+  docks: (p) => [{ kind: "tail", end: p.tail }],
+  tailTo: (p, x) => ({ ...p, tail: Math.min(0, x) }),
+};
+
+const glyph_z: GlyphDef = {
+  char: "z",
+  params: { w: R(140, 170, 210), foot: R(0, 0, 300) },
+  draw(p, s) {
+    const t = xMid(s), b = cBot(s);
+    return [stroke(0, t, L(p.w, t), L(0, b), L(p.w + p.foot, b))];
+  },
+  docks: (p) => [{ kind: "foot", end: p.w + p.foot }],
+  reach: (p, end) => ({ ...p, foot: Math.max(0, end - p.w) }),
+};
+
+const glyph_sz: GlyphDef = {
+  char: "ß",
+  params: { w: R(160, 200, 240) },
+  draw(p, s) {
+    // wie ẞ, aber oben rund: Stamm biegt in die Oberlänge, rechts ein Halbkreis hinab zur oberen Balkenlinie, dort spitz umkehren in das Segel
+    const t = aMid(s), b = cBot(s), y = s.barHigh, w1 = 0.8 * p.w, r = (t - y) / 2, k = KAPPA * r, a = 0.35 * p.w;
+    const rc = Math.min(r, w1 - r), kc = KAPPA * rc;
+    return [
+      stroke(0, 0, L(0, t - rc), C(0, t - rc + kc, rc - kc, t, rc, t), L(w1 - r, t), C(w1 - r + k, t, w1, t - r + k, w1, t - r),
+        C(w1, y + r - k, w1 - r + k, y, w1 - r, y), L(a, y), ...belly(a, y, p.w, b, 47), L(a, b)),
+    ];
+  },
+  docks: () => [{ kind: "stem", side: "left", x: 0 }],
+};
+
 /** Ersatz für noch nicht entworfene Zeichen. */
 export const PLACEHOLDER: GlyphDef = {
   char: "?",
@@ -806,6 +1106,8 @@ export const GLYPHS: Record<string, GlyphDef> = Object.fromEntries(
     glyphParenLeft, glyphParenRight, glyphSlash, glyphAmpersand, glyphQuoteSingle, glyphQuoteRight, glyphQuoteDbl,
     glyphQuoteDblBase, glyphQuoteDblLeft, glyphQuoteSingleBase, glyphQuoteLeft, glyphGuillemetLeft, glyphGuillemetRight,
     glyphEuro, glyphPercent, glyphAt, glyphNumber, glyphPlus, glyphEqual, glyphAsterisk, glyphSection, glyphEllipsis, glyphHAF,
+    glyph_a, glyph_ae, glyph_b, glyph_c, glyph_d, glyph_e, glyph_f, glyph_g, glyph_h, glyph_i, glyph_j, glyph_k, glyph_l, glyph_m, glyph_n,
+    glyph_o, glyph_oe, glyph_p, glyph_q, glyph_r, glyph_s, glyph_sz, glyph_t, glyph_u, glyph_ue, glyph_v, glyph_w, glyph_x, glyph_y, glyph_z,
   ].map((g) => [g.char, g]),
 );
 
