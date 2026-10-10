@@ -48,6 +48,9 @@ test("Kleinbuchstaben verschränkt: Querstrich teilen, Unterlänge nach links, f
   // Ketten: jedes Zeichen vor einem Paar, dessen linke Glyphe sich ändert, ist Sollwert; hinter P setzt die Engine kein c.term, der Font auch nicht
   expect(words("PcB")[0]).toBe("P c B");
   expect(data.fea).toMatch(/ignore sub \[P [^\]]*\] c' \[/);
+  // … vor i m n p r u ü aber schon: gesperrt wird je Partner, nicht für alle
+  expect(words("Pci")[0]).toBe("P c.term i");
+  expect(data.fea).not.toMatch(/ignore sub \[P [^\]]*\] c' \[(?:[^\]]* )?i[ \]]/);
   for (const t of ["Wetter", "Acht", "Echo", "Schrift", "bett", "schiff", "Mannschaft"]) expect(words(t).length).toBe(1);
 });
 

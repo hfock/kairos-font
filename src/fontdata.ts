@@ -173,11 +173,18 @@ export function fontData(version: string): FontData {
     }
 
   // Ketten Z + A + B: setzt die Engine die Verbindung A–B auch hinter Z, und stehen Z und A wie im Font?
+  const plain = (t: string, i: number) => {
+    const g = best(t).glyphs[i];
+    return keyOf(g.char, g.p) === keyOf(g.char, defaults(GLYPHS[g.char]));
+  };
   for (const [name, ab] of chained)
     for (const z of chars) {
       sweep.push(z + ab);
-      const g = best(z + ab).glyphs[1]; // verbindet die Engine hinter Z gar nicht (P vor ch), darf der Font es auch nicht
-      if (keyOf(g.char, g.p) === keyOf(g.char, defaults(GLYPHS[g.char]))) rules.block.set(name, [...(rules.block.get(name) ?? []), z]);
+      if (!plain(z + ab, 1)) continue;
+      // verbindet die Engine hinter Z gar nicht (P vor ch), darf der Font es auch nicht – je Partner geprüft: hinter P bleibt c.term vor i
+      const a = [...ab][0], bs = [...new Set(joins.filter((j) => j.l.name === name).map((j) => j.r.char))];
+      bs.forEach((b) => sweep.push(z + a + b));
+      rules.block.set(name, [...(rules.block.get(name) ?? []), [z, bs.filter((b) => plain(z + a + b, 1))]]);
     }
 
   // Unterlänge davor (Komma, „, g …): setzt die Engine hinter Z keinen Schwanz unter L, darf der Font es auch nicht („Gymnasium“, „Typ“)
@@ -186,8 +193,7 @@ export function fontData(version: string): FontData {
     for (const z of descs) {
       const t = z + j.l.char + j.r.char, k = `${j.l.name} ${glyphName(j.r.char)}`;
       sweep.push(t);
-      const g = best(t).glyphs[2];
-      if (keyOf(g.char, g.p) === keyOf(g.char, defaults(GLYPHS[g.char])) && !rules.untail.get(k)?.includes(z)) rules.untail.set(k, [...(rules.untail.get(k) ?? []), z]);
+      if (plain(t, 2) && !rules.untail.get(k)?.includes(z)) rules.untail.set(k, [...(rules.untail.get(k) ?? []), z]);
     }
 
   // Unterschneidung: freie Seiten gegeneinander mit dem Abstand „keine Verbindung“, verbundene Paare mit dem Engine-Abstand
@@ -235,8 +241,8 @@ function nameLigature(): FontGlyph {
 }
 
 type Pair = { l: Glyph; r: Glyph };
-/** block: linke Variante → Zeichen, hinter denen die Engine sie nicht setzt; under: unterfahren, term: Bogenende, cross: Querstrich teilen, tail: Unterlänge nach links, hook: f-Haken gekürzt; skip/trim: F-Dreierfolgen; untail: „L R“ → Zeichen mit Unterlänge, hinter denen R keinen Schwanz bekommt. */
-type Rules = { nestX: Map<string, Glyph>; trimX: Map<string, Glyph>; under: Pair[]; term: Pair[]; cross: Pair[]; tail: Pair[]; hook: Pair[]; skip: string[][]; trim: [string, string, Glyph][]; block: Map<string, string[]>; untail: Map<string, string[]> };
+/** block: linke Variante → [Zeichen, Partner], hinter dem Zeichen setzt die Engine sie vor diesen Partnern nicht; under: unterfahren, term: Bogenende, cross: Querstrich teilen, tail: Unterlänge nach links, hook: f-Haken gekürzt; skip/trim: F-Dreierfolgen; untail: „L R“ → Zeichen mit Unterlänge, hinter denen R keinen Schwanz bekommt. */
+type Rules = { nestX: Map<string, Glyph>; trimX: Map<string, Glyph>; under: Pair[]; term: Pair[]; cross: Pair[]; tail: Pair[]; hook: Pair[]; skip: string[][]; trim: [string, string, Glyph][]; block: Map<string, [string, string[]][]>; untail: Map<string, string[]> };
 
 /** Feature-Datei: liga (Name), dlig (HAF), calt (verschachteln, unterfahren, Bogenende, Querstrich, Unterlänge, f-Haken) in dieser Reihenfolge. */
 function features(reg: Map<string, Glyph>, fNest: Glyph, r: Rules): string {
@@ -269,9 +275,13 @@ function features(reg: Map<string, Glyph>, fNest: Glyph, r: Rules): string {
   const partner = (c: string) => `[${variants(c).filter((g) => !g.role.right).map((g) => g.name).join(" ")}]`; // Grundglyphe samt links freier Varianten
   /** Ausnahmen zuerst: hinter den gesperrten Zeichen (samt ihren Varianten) bleibt die linke Glyphe, wie sie ist. */
   const ignores = (js: Pair[]) =>
-    uniq(js.filter((j) => r.block.has(j.l.name)).map((j) => j.l.name)).map((n) => {
-      const ls = js.filter((j) => j.l.name === n), zs = r.block.get(n)!.flatMap((z) => variants(z).map((g) => g.name));
-      return `  ignore sub [${zs.join(" ")}] ${input(ls[0].l)}' [${uniq(ls.flatMap((j) => partner(j.r.char).slice(1, -1).split(" "))).join(" ")}];`;
+    uniq(js.filter((j) => r.block.has(j.l.name)).map((j) => j.l.name)).flatMap((n) => {
+      const ls = js.filter((j) => j.l.name === n), byPartners = new Map<string, string[]>(); // gleiche gesperrte Partner: eine Regel
+      for (const [z, bs] of r.block.get(n)!) {
+        const ps = uniq(ls.filter((j) => bs.includes(j.r.char)).flatMap((j) => partner(j.r.char).slice(1, -1).split(" "))).join(" ");
+        if (ps) byPartners.set(ps, [...(byPartners.get(ps) ?? []), ...variants(z).map((g) => g.name)]);
+      }
+      return [...byPartners].map(([ps, zs]) => `  ignore sub [${zs.join(" ")}] ${input(ls[0].l)}' [${ps}];`);
     });
   out.push(`lookup UNDERRUN_LEFT {\n${[...ignores(r.under), ...uniq(r.under.map((j) => `  sub ${input(j.l)}' ${glyphName(j.r.char)} by ${j.l.name};`))].join("\n")}\n} UNDERRUN_LEFT;`);
   out.push(`lookup UNDERRUN_RIGHT {\n${uniq(r.under.map((j) => `  sub ${j.l.name} ${glyphName(j.r.char)}' by ${j.r.name};`)).join("\n")}\n} UNDERRUN_RIGHT;`);
@@ -296,6 +306,7 @@ const TESTS: [string, Record<string, boolean>][] = [
   ["Hagen Aad Fock", {}], ["haf", { dlig: true }], ["Hagen", {}], ["Tafel", {}], ["Stift", {}], ["ich", {}], ["Die Fläche", {}], ["Pflicht", {}], ["Kaffee", {}],
   ["Wetter", {}], ["Acht", {}], ["Echo", {}], ["Schrift", {}], ["bett", {}], ["schiff", {}], ["Mannschaft", {}],
   ["„Gymnasium“", {}], ["„Typ“", {}], // Unterlänge hinter einer Unterlänge: kein Schwanz unter das T
+  ["Pci", {}], ["\uE000cu", {}], // hinter P und dem Monogramm: c.term vor i und u
 ];
 
 /** Sollwerte: Glyphenfolge und Ursprünge je Wort wie die Engine; bei einem Wort zusätzlich die Striche für den Flächenvergleich.
