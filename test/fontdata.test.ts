@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test";
 import { fontData, glyphName } from "../src/fontdata";
 import { GLYPHS } from "../src/glyphs";
+import { TAIL_STEP } from "../src/rules";
 
 const data = fontData("test");
 const byName = new Map(data.glyphs.map((g) => [g.name, g]));
@@ -38,9 +39,16 @@ test("Kleinbuchstaben verschränkt: Querstrich teilen, Unterlänge nach links, f
   expect(data.fea).toMatch(/sub f' \[t[^\]]*\] by f\.cross;/);
   expect(data.fea).toMatch(/sub a g' by g\.tail(\.\d+)?;/);
   expect(data.fea).toMatch(/sub f' \[T[^\]]*\] by f\.trim(\.\d+)?;/);
-  // Schwanzlängen in Stufen: wenige Varianten je Zeichen statt einer je linkem Nachbarn
-  for (const c of "gjy") expect([c, data.glyphs.filter((g) => g.name.startsWith(c + ".tail")).length <= 10]).toEqual([c, true]);
+  // Schwanzlängen in Stufen: höchstens eine Variante je Stufe im Spielraum (g: 11), statt einer je linkem Nachbarn (bis 65)
+  for (const c of "gjy") {
+    const { min, def } = GLYPHS[c].params.tail, n = data.glyphs.filter((g) => g.name.startsWith(c + ".tail")).length;
+    expect([c, n >= 1 && n <= Math.floor((def - min) / TAIL_STEP)]).toEqual([c, true]);
+  }
   expect(data.info.xHeight).toBe(300);
+  // Ketten: jedes Zeichen vor einem Paar, dessen linke Glyphe sich ändert, ist Sollwert; hinter P setzt die Engine kein c.term, der Font auch nicht
+  expect(words("PcB")[0]).toBe("P c B");
+  expect(data.fea).toMatch(/ignore sub \[P [^\]]*\] c' \[/);
+  for (const t of ["Wetter", "Acht", "Echo", "Schrift", "bett", "schiff", "Mannschaft"]) expect(words(t).length).toBe(1);
 });
 
 test("Sollwerte: FLÄCHE mit gekürztem F-Arm, Namens-Ligatur, Monogramm nur als eigenes Wort", () => {

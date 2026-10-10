@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import { L, stroke } from "../src/geom";
 import { GLYPHS, defaults } from "../src/glyphs";
-import { apply, barLink, collides, dock, instance, joinsFor, lightGap, spacing, trimTop, type Inst, type Join } from "../src/rules";
+import { TAIL_STEP, apply, barLink, collides, dock, instance, joinsFor, lightGap, spacing, trimTop, type Inst, type Join } from "../src/rules";
 import { FLAECHE_1902 as S } from "../src/style";
 
 const inst = (c: string, p = {}) => instance(GLYPHS[c], { ...defaults(GLYPHS[c]), ...p }, S);
@@ -118,6 +118,7 @@ test("joinsFor klein: Querstrich teilen (f, t), Unterlänge nach links (g, j, y)
   for (const [a, b] of [["a", "g"], ["i", "j"], ["e", "y"]]) expect(types(a, b)).toEqual(["none", "tail"]);
   expect(types("f", "l")).toEqual(["none"]); // f-Haken kürzen ist keine Verbindung
   expect(types("c", "h")).toEqual(["none", "term"]);
+  for (const a of [",", ";", "„", "‚", "p", "j"]) expect([a, types(a, "g")]).toEqual([a, ["none"]]); // nie unter eine Unterlänge
 });
 
 test("Querstrich teilen: Abstand wie ohne Verbindung, der linke Querstrich läuft bis an den Anfang des rechten", () => {
@@ -127,16 +128,17 @@ test("Querstrich teilen: Abstand wie ohne Verbindung, der linke Querstrich läuf
   expect(dock(l, "cross")!.y).toBe(dock(r, "cross")!.y);
 });
 
-test("Unterlänge nach links: der Schwanz verlängert sich in Stufen von 40 bis höchstens eine Strichstärke rechts der linken Tinte des Nachbarn", () => {
+test("Unterlänge nach links: der Schwanz verlängert sich in Stufen (TAIL_STEP) bis höchstens eine Strichstärke rechts der linken Tinte des Nachbarn", () => {
   const { r, dx } = join({ type: "tail" }, "a", "g");
   expect(dx).toBeCloseTo(spacing(inst("a"), inst("g"), S));
   const end = dx + dock(r, "tail")!.end, limit = inst("a").prof.minX + S.stroke;
   expect(end).toBeGreaterThanOrEqual(limit - 1e-9); // nie länger als bis dorthin
-  expect(end - limit).toBeLessThan(40);
-  expect((GLYPHS.g.params.tail.def - r.p.tail) % 40).toBe(0); // Font: eine Glyphe je Stufe, nicht je Nachbar
-  for (const [a, b] of [["e", "j"], ["n", "y"], ["T", "g"]]) {
-    const t = join({ type: "tail" }, a, b).r.p.tail;
-    expect([a + b, (GLYPHS[b].params.tail.def - t) % 40]).toEqual([a + b, 0]);
+  expect(end - limit).toBeLessThan(TAIL_STEP);
+  // Font: eine Glyphe je Stufe, nicht je Nachbar – Länge ein ganzes Vielfaches von TAIL_STEP (Gleitkomma-sicher)
+  const steps = (c: string, tail: number) => (GLYPHS[c].params.tail.def - tail) / TAIL_STEP;
+  for (const [a, b] of [["a", "g"], ["e", "j"], ["n", "y"], ["T", "g"]]) {
+    const n = steps(b, join({ type: "tail" }, a, b).r.p.tail);
+    expect([a + b, n >= 1, Math.abs(n - Math.round(n)) < 1e-9]).toEqual([a + b, true, true]);
   }
   expect(collides(inst("a"), 0, r, dx, S)).toBe(false); // unter dem a, nicht hinein
 });

@@ -100,7 +100,7 @@ export function fontData(version: string): FontData {
   // Paare: was die Engine bei Verschränkung 0,5 aus zwei Zeichen macht
   type Join = { l: Glyph; r: Glyph; dx: number };
   const joins: Join[] = [];
-  const rules: Rules = { nestX: new Map(), trimX: new Map(), under: [], term: [], cross: [], tail: [], hook: [], skip: [], trim: [] };
+  const rules: Rules = { nestX: new Map(), trimX: new Map(), under: [], term: [], cross: [], tail: [], hook: [], skip: [], trim: [], block: new Map() };
   const nests: { x: string; p: Params; r: Glyph; dx: number }[] = [];
   /** F mit gekürztem oberem Arm, auf 5 abgerundet; Glyphennamen ohne Minus. */
   const trimF = (p: Params) => {
@@ -114,11 +114,14 @@ export function fontData(version: string): FontData {
     joins.push(j);
     const dl = defaults(GLYPHS[l.char]); // links verbunden heißt: die eigene rechte Seite wurde verlängert (T bleibt frei)
     if (OWN_RIGHT.some((k) => k in dl && Math.abs(l.inst.p[k] - dl[k]) > 1e-6)) l.role.left = true;
-    if (r !== reg.get(keyOf(r.char, defaults(GLYPHS[r.char])))) r.role.right = true;
+    // rechts verbunden heißt: die eigene linke Seite wurde geändert – nicht nur die rechte (c.term im F-Dreier: links frei wie in „ch“)
+    const dr = defaults(GLYPHS[r.char]);
+    if (Object.keys(dr).some((k) => !OWN_RIGHT.includes(k) && Math.abs(r.inst.p[k] - dr[k]) > 1e-6)) r.role.right = true;
     if (type === "underrun") rules.under.push(j);
     if (type === "term" || type === "cross" || type === "tail" || type === "hook") rules[type].push(j);
     return j;
   };
+  const chained = new Map<string, string>(); // je Variante der linken Glyphe (c.term, f.cross, f.trim …) ein Paar: jedes Zeichen davor wird Sollwert
   for (const a of chars)
     for (const b of chars) {
       sweep.push(a + b); // auch ohne mögliche Verbindung: prüft die Unterschneidung der freien Seiten
@@ -126,12 +129,15 @@ export function fontData(version: string): FontData {
       const v = best(a + b), j = v.joins[0], [ga, gb] = v.glyphs;
       if (j.type === "none") {
         const l = glyph(a, ga.p);
-        if (l !== base(a)) record("hook", l, glyph(b, gb.p), gb.x - ga.x); // f-Haken vor der Oberlänge gekürzt
+        if (l !== base(a)) record("hook", l, glyph(b, gb.p), gb.x - ga.x), chained.has(l.name) || chained.set(l.name, a + b); // f-Haken vor der Oberlänge gekürzt
         continue;
       }
       const r = glyph(b, gb.p);
       if (j.type === "nest") nests.push({ x: b, p: ga.p, r, dx: gb.x - ga.x }); // erst wenn das Regel-F feststeht
-      else record(j.sub ?? j.type, glyph(a, ga.p), r, gb.x - ga.x);
+      else {
+        const l = record(j.sub ?? j.type, glyph(a, ga.p), r, gb.x - ga.x).l;
+        if (l !== base(a) && !chained.has(l.name)) chained.set(l.name, a + b);
+      }
     }
   // Verschachteln: das Regel-F hat den längsten oberen Arm; kürzt ihn schon der verschachtelte Buchstabe selbst (d), eigene Variante
   const top = Math.max(...nests.map((n) => n.p.top));
@@ -166,6 +172,14 @@ export function fontData(version: string): FontData {
       if (further) record(jXZ.sub ?? jXZ.type, gx, glyph(z, gZ.p), gZ.x - gX.x);
     }
 
+  // Ketten Z + A + B: setzt die Engine die Verbindung A–B auch hinter Z, und stehen Z und A wie im Font?
+  for (const [name, ab] of chained)
+    for (const z of chars) {
+      sweep.push(z + ab);
+      const g = best(z + ab).glyphs[1]; // verbindet die Engine hinter Z gar nicht (P vor ch), darf der Font es auch nicht
+      if (keyOf(g.char, g.p) === keyOf(g.char, defaults(GLYPHS[g.char]))) rules.block.set(name, [...(rules.block.get(name) ?? []), z]);
+    }
+
   // Unterschneidung: freie Seiten gegeneinander mit dem Abstand „keine Verbindung“, verbundene Paare mit dem Engine-Abstand
   const all = [...reg.values()];
   const leftFree = all.filter((g) => !g.role.left), rightFree = all.filter((g) => !g.role.right);
@@ -194,7 +208,7 @@ export function fontData(version: string): FontData {
     glyphs,
     kerning: [...kern.values()].filter(([, , v]) => v !== 0),
     fea,
-    ...expectations(reg, fNest, sweep),
+    ...expectations(reg, fNest, [...new Set(sweep)]), // F + X + Z kommt auch als Kette vor
   };
 }
 
@@ -211,8 +225,8 @@ function nameLigature(): FontGlyph {
 }
 
 type Pair = { l: Glyph; r: Glyph };
-/** under: unterfahren, term: Bogenende, cross: Querstrich teilen, tail: Unterlänge nach links, hook: f-Haken gekürzt; skip/trim: F-Dreierfolgen. */
-type Rules = { nestX: Map<string, Glyph>; trimX: Map<string, Glyph>; under: Pair[]; term: Pair[]; cross: Pair[]; tail: Pair[]; hook: Pair[]; skip: string[][]; trim: [string, string, Glyph][] };
+/** block: linke Variante → Zeichen, hinter denen die Engine sie nicht setzt; under: unterfahren, term: Bogenende, cross: Querstrich teilen, tail: Unterlänge nach links, hook: f-Haken gekürzt; skip/trim: F-Dreierfolgen. */
+type Rules = { nestX: Map<string, Glyph>; trimX: Map<string, Glyph>; under: Pair[]; term: Pair[]; cross: Pair[]; tail: Pair[]; hook: Pair[]; skip: string[][]; trim: [string, string, Glyph][]; block: Map<string, string[]> };
 
 /** Feature-Datei: liga (Name), dlig (HAF), calt (verschachteln, unterfahren, Bogenende, Querstrich, Unterlänge, f-Haken) in dieser Reihenfolge. */
 function features(reg: Map<string, Glyph>, fNest: Glyph, r: Rules): string {
@@ -241,13 +255,20 @@ function features(reg: Map<string, Glyph>, fNest: Glyph, r: Rules): string {
   out.push(`lookup NEST_RIGHT {\n${changed.map(([c, g]) => `  sub @FNEST ${glyphName(c)}' by ${g.name};`).join("\n")}\n} NEST_RIGHT;`);
   const uniq = (xs: string[]) => [...new Set(xs)];
   const input = (g: Glyph) => glyphName(g.char) + (g.inst.p.h < 1 ? ".short" : ""); // so heißt die Glyphe, wenn der Lookup sie sieht
-  out.push(`lookup UNDERRUN_LEFT {\n${uniq(r.under.map((j) => `  sub ${input(j.l)}' ${glyphName(j.r.char)} by ${j.l.name};`)).join("\n")}\n} UNDERRUN_LEFT;`);
+  const variants = (c: string) => [...reg.values()].filter((g) => g.char === c);
+  const partner = (c: string) => `[${variants(c).filter((g) => !g.role.right).map((g) => g.name).join(" ")}]`; // Grundglyphe samt links freier Varianten
+  /** Ausnahmen zuerst: hinter den gesperrten Zeichen (samt ihren Varianten) bleibt die linke Glyphe, wie sie ist. */
+  const ignores = (js: Pair[]) =>
+    uniq(js.filter((j) => r.block.has(j.l.name)).map((j) => j.l.name)).map((n) => {
+      const ls = js.filter((j) => j.l.name === n), zs = r.block.get(n)!.flatMap((z) => variants(z).map((g) => g.name));
+      return `  ignore sub [${zs.join(" ")}] ${input(ls[0].l)}' [${uniq(ls.flatMap((j) => partner(j.r.char).slice(1, -1).split(" "))).join(" ")}];`;
+    });
+  out.push(`lookup UNDERRUN_LEFT {\n${[...ignores(r.under), ...uniq(r.under.map((j) => `  sub ${input(j.l)}' ${glyphName(j.r.char)} by ${j.l.name};`))].join("\n")}\n} UNDERRUN_LEFT;`);
   out.push(`lookup UNDERRUN_RIGHT {\n${uniq(r.under.map((j) => `  sub ${j.l.name} ${glyphName(j.r.char)}' by ${j.r.name};`)).join("\n")}\n} UNDERRUN_RIGHT;`);
-  const partner = (c: string) => `[${[...reg.values()].filter((g) => g.char === c && !g.role.right).map((g) => g.name).join(" ")}]`; // Grundglyphe samt links freier Varianten
   /** Linke Glyphe wird zur Variante vor dem Partner; bleibt sie, wie sie ist (T bleibt T), genügt die Unterschneidung. */
   const left = (name: string, js: Pair[]) => {
     const subs = js.filter((j) => j.l.name !== input(j.l)).map((j) => `  sub ${input(j.l)}' ${partner(j.r.char)} by ${j.l.name};`);
-    out.push(`lookup ${name} {\n${uniq(subs).join("\n")}\n} ${name};`);
+    out.push(`lookup ${name} {\n${[...ignores(js), ...uniq(subs)].join("\n")}\n} ${name};`);
   };
   left("TERM_LEFT", r.term);
   left("CROSS_LEFT", r.cross);
@@ -262,6 +283,7 @@ const TESTS: [string, Record<string, boolean>][] = [
   ["FLÄCHE", {}], ["fläche", {}], ["DIE FLÄCHE", {}], ["HAGEN AAD FOCK", {}], ["HAF", { dlig: true }], ["HAF", {}], ["HAFEN", { dlig: true }],
   ["WIENER WERKSTÄTTE", {}], ["THEATER", {}], ["ZAUBER", {}], ["GLAS", {}], ["TEAM", {}], ["OFFEN", {}], ["AUFTAKT", {}],
   ["Hagen Aad Fock", {}], ["haf", { dlig: true }], ["Hagen", {}], ["Tafel", {}], ["Stift", {}], ["ich", {}], ["Die Fläche", {}], ["Pflicht", {}], ["Kaffee", {}],
+  ["Wetter", {}], ["Acht", {}], ["Echo", {}], ["Schrift", {}], ["bett", {}], ["schiff", {}], ["Mannschaft", {}],
 ];
 
 /** Sollwerte: Glyphenfolge und Ursprünge je Wort wie die Engine; bei einem Wort zusätzlich die Striche für den Flächenvergleich.
@@ -272,10 +294,16 @@ function expectations(reg: Map<string, Glyph>, fNest: Glyph, sweep: string[]): P
     const k = c + JSON.stringify(Object.keys(GLYPHS[c].params).map((x) => Math.round(q[x] * 100) / 100));
     return reg.get(k)?.name ?? `?${c}`;
   };
+  const insts = new Map<string, Inst>(); // je Glyphe nur einmal vermessen: die Sollwerte wiederholen dieselben Glyphen tausendfach
+  const inst = (c: string, p: Params) => {
+    const k = c + JSON.stringify(Object.keys(GLYPHS[c].params).map((x) => p[x]));
+    if (!insts.has(k)) insts.set(k, instance(GLYPHS[c], p, S));
+    return insts.get(k)!;
+  };
   const entry = (text: string, features: Record<string, boolean>): Expect => {
     if (text === hagen.text) return { text, features, words: [[{ name: NAME_LIG, x: 0 }]], parts: null };
     if (text === "HAF" && features.dlig) return { text, features, words: [[{ name: "H_A_F", x: 0 }]], parts: null };
-    const gs = best(text).glyphs.map((g) => ({ ...g, inst: instance(GLYPHS[g.char], g.p, S) })), words: ExpectGlyph[][] = [];
+    const gs = best(text).glyphs.map((g) => ({ ...g, inst: inst(g.char, g.p) })), words: ExpectGlyph[][] = [];
     let start = 0;
     gs.forEach((g, i) => {
       const o = g.x - ox(g.inst);
