@@ -12,6 +12,7 @@ const jobs: [string, string, number][] = [
   ["glyphen-klein-2", "p q r s t u v w x y z ä ö ü ß", 0],
   ["woerter-klein", "Hagen Spiegel Tafel Stift", 0],
   ["wiener-werkstaette", "WIENER WERKSTÄTTE", 0.5],
+  ["verschraenkung-klein", "Tafel Stift Hagen ich Pflicht Kaffee", 0.5],
   ["ziffern", "0 1 2 3 4 5 6 7 8 9", 0],
   ["zeichen", ". , : ; ! ? - – ( ) / & ' ’ \" „ “ ‚ ‘ « » € % @ # + = * § … \uE000", 0],
   ["die-flaeche", "DIE FLÄCHE", 0.5],

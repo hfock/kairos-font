@@ -2,8 +2,8 @@ import { BIN, L, gapOffset, inkPoints, minDist, profile, stroke, type Profile, t
 import { inRange, type Dock, type GlyphDef, type Params } from "./glyphs";
 import type { Style } from "./style";
 
-export type JoinType = "none" | "nest" | "underrun" | "share";
-export type Join = { type: JoinType; sub?: "term" | "stem" | "leg"; bar?: boolean };
+export type JoinType = "none" | "nest" | "underrun" | "share" | "tail";
+export type Join = { type: JoinType; sub?: "term" | "stem" | "leg" | "cross"; bar?: boolean };
 /** Ein Buchstabe mit festen Reglerwerten, fertig vermessen (Koordinaten lokal, x = 0 am linken Bezug). */
 export type Inst = { def: GlyphDef; p: Params; strokes: Stroke[]; ink: Pt[]; prof: Profile; docks: Dock[] };
 
@@ -19,9 +19,11 @@ export function dock<K extends Dock["kind"]>(i: Inst, kind: K, side?: "left" | "
     | undefined;
 }
 
-/** Abstand für „keine Verbindung“: kleinste waagrechte Lichtweite = gap (+ Seitenkorrektur). */
-export function spacing(l: Inst, r: Inst, gap: number, minY = 0): number {
-  return gapOffset(l.prof, r.prof, gap + (l.def.adjust?.right ?? 0) + (r.def.adjust?.left ?? 0), minY);
+/** Abstand für „keine Verbindung“: kleinste waagrechte Lichtweite = Buchstabenabstand (+ Seitenkorrektur).
+ *  Ein loser oberer Strich (f-Haken) zählt nur so kurz, wie trimTop ihn kürzen darf – gepinnte Regler (lock) bleiben; die Engine kürzt ihn danach vor dem Nachbarn. */
+export function spacing(l: Inst, r: Inst, s: Style, minY = 0, lock?: Params): number {
+  const lt = l.def.loose ? instance(l.def, { ...l.def.trimTop!(l.p, -Infinity), ...lock }, s) : l;
+  return gapOffset(lt.prof, r.prof, s.gap + (l.def.adjust?.right ?? 0) + (r.def.adjust?.left ?? 0), minY);
 }
 
 /** Alle an dieser Grenze möglichen Verbindungen (Balken-Variante kommt in der Engine dazu). */
@@ -34,13 +36,15 @@ export function joinsFor(l: Inst, r: Inst): Join[] {
   if (term && l.def.close && stemL && r.prof.left[Math.floor(term.y / BIN)] <= stemL.x) out.push({ type: "share", sub: "term" });
   if (dock(l, "stem", "right") && stemL && !stemL.solo) out.push({ type: "share", sub: "stem" });
   if (dock(l, "leg", "right") && dock(r, "leg", "left")) out.push({ type: "share", sub: "leg" });
+  if (dock(l, "cross") && l.def.extend && dock(r, "cross")) out.push({ type: "share", sub: "cross" });
+  if (dock(r, "tail") && r.def.tailTo) out.push({ type: "tail" });
   return out;
 }
 
 export type Applied = { lp: Params; rp: Params; dx: number };
 
-/** Regel anwenden: neue Regler für links und rechts plus Verschiebung dx des rechten Buchstabens. */
-export function apply(j: Join, l: Inst, rDef: GlyphDef, rp0: Params, s: Style): Applied | null {
+/** Regel anwenden: neue Regler für links und rechts plus Verschiebung dx des rechten Buchstabens; lock = gepinnte Regler links. */
+export function apply(j: Join, l: Inst, rDef: GlyphDef, rp0: Params, s: Style, lock?: Params): Applied | null {
   let lp = l.p, rp = rp0, dx: number;
   if (j.type === "nest") {
     if (rDef.params.h) rp = { ...rp, h: (dock(l, "zone")!.armY - s.stroke / 2 - s.clearance) / s.capHeight }; // Satzzeichen ohne Höhenregler bleiben, wie sie sind
@@ -51,14 +55,22 @@ export function apply(j: Join, l: Inst, rDef: GlyphDef, rp0: Params, s: Style): 
     const minY = s.stroke + s.clearance;
     rp = rDef.lift!(rp, minY, s);
     const r = instance(rDef, rp, s);
-    dx = spacing(l, r, s.gap, minY);
+    dx = spacing(l, r, s, minY, lock);
     const end = dx + dock(r, "leg", "right")!.footX - s.footGap;
     if (end < dx + r.prof.minX + 2 * s.stroke) return null;
     lp = l.def.reach!(lp, end);
   } else {
     const r = instance(rDef, rp, s);
-    if (j.type === "none") dx = spacing(l, r, s.gap);
-    else if (j.sub === "term") {
+    if (j.type === "none") dx = spacing(l, r, s, 0, lock);
+    else if (j.type === "tail") {
+      dx = spacing(l, r, s, 0, lock);
+      const x = l.prof.minX + s.stroke - dx; // Schwanz endet eine Strichstärke rechts der linken Tinte des Nachbarn
+      if (x >= dock(r, "tail")!.end) return null;
+      rp = rDef.tailTo!(rp, x);
+    } else if (j.sub === "cross") {
+      dx = spacing(l, r, s, 0, lock);
+      lp = l.def.extend!(lp, dx + dock(r, "cross")!.x0); // linker Querstrich läuft bis an den Anfang des rechten
+    } else if (j.sub === "term") {
       const stem = dock(r, "stem", "left")!.x;
       dx = dock(l, "terminal")!.topEnd + s.armGap + s.stroke / 2 - stem;
       lp = l.def.close!(lp, dx + stem);
@@ -74,15 +86,15 @@ export const lightGap = (a: Inst, ax: number, b: Inst, bx: number, limit: number
 /** Harte Regel: Tinte verschiedener Buchstaben bleibt mindestens armGap auseinander (3 Einheiten Messtoleranz). */
 export const collides = (a: Inst, ax: number, b: Inst, bx: number, s: Style) => lightGap(a, ax, b, bx, s.armGap) < s.armGap - 3;
 
-/** Oberen Arm (F) vor dem Buchstaben o kürzen, sodass armGap Luft bleibt. */
-export function trimTop(f: Inst, fx: number, o: Inst, ox: number, s: Style): Inst {
+/** Oberen Arm (F) oder Haken (f) vor dem Buchstaben o kürzen, sodass armGap Luft bleibt; gepinnte Regler (lock) bleiben. */
+export function trimTop(f: Inst, fx: number, o: Inst, ox: number, s: Style, lock?: Params): Inst {
   if (!f.def.trimTop) return f;
   const top = s.capHeight * (f.p.h ?? 1); // Kleinbuchstaben haben keinen Höhenregler
   let obstacle = Infinity;
   for (let i = Math.floor((top - s.stroke) / BIN); i <= Math.floor(top / BIN) && i < o.prof.left.length; i++)
     if (o.prof.left[i] + ox < obstacle) obstacle = o.prof.left[i] + ox;
   if (obstacle === Infinity) return f;
-  const p = f.def.trimTop(f.p, obstacle - s.armGap - fx);
+  const p = { ...f.def.trimTop(f.p, obstacle - s.armGap - fx), ...lock };
   return Object.entries(p).every(([k, v]) => v === f.p[k]) ? f : instance(f.def, p, s); // Regler je Buchstabe verschieden (F: top, f: hook)
 }
 

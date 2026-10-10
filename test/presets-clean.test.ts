@@ -12,6 +12,7 @@ const valid: State = {
 
 test("cleanPins: nur endliche Zahlen und bekannte Verbindungen", () => {
   expect(cleanPins({ letters: { 1: { w: 300 } }, joins: { 4: { type: "nest", bar: false } } })).not.toBeNull();
+  expect(cleanPins({ letters: {}, joins: { 1: { type: "share", sub: "cross" }, 2: { type: "tail" } } })).not.toBeNull(); // Kleinbuchstaben (M4)
   expect(cleanPins({ letters: { 1: { w: "300" } }, joins: {} })).toBeNull();
   expect(cleanPins({ letters: {}, joins: { 4: { type: "warp" } } })).toBeNull();
   expect(cleanPins({ letters: {}, joins: { 4: { type: "share", sub: "leg", bar: "ja" } } })).toBeNull();

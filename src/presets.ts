@@ -29,7 +29,7 @@ export type State = {
   selected: number | null;
 };
 
-const JOIN_TYPES = new Set(["none", "nest", "underrun", "share"]), JOIN_SUBS = new Set(["term", "stem", "leg"]);
+const JOIN_TYPES = new Set(["none", "nest", "underrun", "share", "tail"]), JOIN_SUBS = new Set(["term", "stem", "leg", "cross"]);
 const isNum = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
 const isColor = (v: unknown) => typeof v === "string" && /^#[0-9a-f]{6}$/i.test(v);

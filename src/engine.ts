@@ -11,9 +11,9 @@ export type Layout = { glyphs: Placed[]; extras: Stroke[]; joins: Record<number,
 export type Result = { variants: Layout[]; warnings: string[] };
 
 /** Alle Gewichte an einer Stelle. Verbindungskosten bei Verschränkung 0; davon wird gain × Verschränkung abgezogen. */
-export const WEIGHTS = { nest: 0.2, underrun: 0.2, term: 0.2, stem: 1.0, leg: 0.6, bar: 0.6, gain: 1.0, width: 0.2, flush: 0.3, rhythm: 0.2, deviation: 5 };
+export const WEIGHTS = { nest: 0.2, underrun: 0.2, term: 0.2, cross: 0.2, tail: 0.2, stem: 1.0, leg: 0.6, bar: 0.6, gain: 1.0, width: 0.2, flush: 0.3, rhythm: 0.2, deviation: 5 };
 const BEAM = 32;
-const CODE: Record<string, string> = { none: "-", nest: "N", underrun: "U", term: "T", stem: "S", leg: "L" };
+const CODE: Record<string, string> = { none: "-", nest: "N", underrun: "U", term: "T", stem: "S", leg: "L", cross: "Q", tail: "G" };
 
 type Letter = { index: number; char: string; def: GlyphDef };
 type Node = { placed: Placed[]; joins: Record<number, Join>; extras: Stroke[]; cost: number; key: string };
@@ -22,7 +22,7 @@ const cmp = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 
 function joinCost(j: Join, interlock: number): number {
   const g = WEIGHTS.gain * interlock;
-  const base = j.type === "none" ? null : j.type === "share" ? WEIGHTS[j.sub!] : WEIGHTS[j.type as "nest" | "underrun"];
+  const base = j.type === "none" ? null : j.type === "share" ? WEIGHTS[j.sub!] : WEIGHTS[j.type as "nest" | "underrun" | "tail"];
   return (base === null ? 0 : base - g) + (j.bar ? WEIGHTS.bar - g : 0);
 }
 
@@ -59,17 +59,16 @@ function expand(n: Node, cur: Letter, o: Options, usePins: boolean, force = fals
   const options = force ? [{ type: "none" } as Join] : joinsFor(last.inst, instance(cur.def, rp0, s));
   for (const j of options) {
     if (pin && (pin.type !== j.type || pin.sub !== j.sub)) continue;
-    const res = apply(j, last.inst, cur.def, rp0, s);
+    const res = apply(j, last.inst, cur.def, rp0, s, lockL);
     if (!res) continue;
     // Ein gepinnter oberer Arm gilt: Regeln verlängern ihn nicht, die Armkürzung lässt ihn stehen
     const lp = lockL?.top === undefined ? res.lp : { ...res.lp, top: lockL.top };
     if (conflicts(lp, lockL) || conflicts(res.rp, lockR) || !inRange(last.inst.def, lp)) continue;
     const rx = last.x + res.dx, r = instance(cur.def, res.rp, s);
     const l0 = lp === last.inst.p ? last.inst : instance(last.inst.def, lp, s);
-    const l = lockL?.top === undefined ? trimTop(l0, last.x, r, rx, s) : l0;
+    const l = trimTop(l0, last.x, r, rx, s, lockL); // gepinnter Arm oder Haken bleibt
     const pinP = usePins && prev ? o.pins.letters[prev.index] : undefined;
-    const prevTop = pinP && !conflicts(prev!.inst.p, pinP) ? pinP.top : undefined; // wie lockL: nur ein Pin, den der Buchstabe wirklich trägt
-    const p = prev && (prevTop === undefined ? trimTop(prev.inst, prev.x, r, rx, s) : prev.inst);
+    const p = prev && trimTop(prev.inst, prev.x, r, rx, s, pinP && !conflicts(prev.inst.p, pinP) ? pinP : undefined); // wie lockL: nur ein Pin, den der Buchstabe wirklich trägt
     if (!force && j.type !== "share" && collides(l, last.x, r, rx, s)) continue;
     if (!force && prev && collides(p!, prev.x, r, rx, s)) continue;
     for (const bar of [false, true]) {

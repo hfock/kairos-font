@@ -165,7 +165,7 @@ export function fontData(version: string): FontData {
   const leftFree = all.filter((g) => !g.role.left), rightFree = all.filter((g) => !g.role.right);
   const kern = new Map<string, [string, string, number]>();
   for (const l of leftFree)
-    for (const r of rightFree) kern.set(`${l.name} ${r.name}`, [l.name, r.name, kernFor(l.inst, r.inst, spacing(l.inst, placed(r), S.gap))]);
+    for (const r of rightFree) kern.set(`${l.name} ${r.name}`, [l.name, r.name, kernFor(l.inst, r.inst, spacing(l.inst, placed(r), S))]);
   for (const j of joins) {
     // bleibt der rechte Partner unverändert (TH, CH), gilt der Abstand auch für seine links freien Varianten (E.foot, F.nest …)
     const rs = j.r === base(j.r.char) ? all.filter((g) => g.char === j.r.char && !g.role.right) : [j.r];

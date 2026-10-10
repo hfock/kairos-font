@@ -248,6 +248,34 @@ test("f und t: Querstrich ab x = 0, Stamm bei 50, Querstrich ohne Verlängerung 
   expect(GLYPHS.f.trimTop!(defaults(GLYPHS.f), 130).hook).toBe(80); // Haken vom Stamm bei 50 gemessen
 });
 
+test("Regel-Haken der Kleinbuchstaben: Wert rein, Regler und Andockstelle raus", () => {
+  const d = (c: string) => defaults(GLYPHS[c]);
+  const dock = (c: string, p: Params) => GLYPHS[c].docks(p, S)[0] as Record<string, number>;
+  // c: Bogenende bis x, nie kürzer als ohne Verbindung
+  const c = GLYPHS.c.close!(d("c"), 200);
+  expect(c).toEqual({ ...d("c"), term: 40 });
+  expect(dock("c", c).topEnd).toBe(200);
+  expect(GLYPHS.c.close!(d("c"), 100).term).toBe(0);
+  // f, t: Querstrich bis x, nie kürzer als 150
+  for (const ch of ["f", "t"]) {
+    const p = GLYPHS[ch].extend!(d(ch), 300);
+    expect(p).toEqual({ ...d(ch), cross: 150 });
+    expect(dock(ch, p).x1).toBe(300);
+    expect(GLYPHS[ch].extend!(d(ch), 100).cross).toBe(0);
+  }
+  // g, j, y: Schwanz bis x nach links, nie weiter nach rechts als ohne Verbindung
+  for (const [ch, end] of [["g", 40], ["j", 20], ["y", 0]] as const) {
+    const p = GLYPHS[ch].tailTo!(d(ch), -150);
+    expect(p).toEqual({ ...d(ch), tail: -150 });
+    expect(dock(ch, p).end).toBe(-150);
+    expect(GLYPHS[ch].tailTo!(d(ch), 100).tail).toBe(end);
+  }
+  // f: Haken höchstens bis end (Stamm bei 50), nie kürzer als 45, nie länger als vorher
+  expect(GLYPHS.f.trimTop!(d("f"), 130)).toEqual({ ...d("f"), hook: 80 });
+  expect(GLYPHS.f.trimTop!(d("f"), 60).hook).toBe(45);
+  expect(GLYPHS.f.trimTop!(d("f"), 500).hook).toBe(110);
+});
+
 test("k: Arm schräg, auf der x-Höhe waagrecht beschnitten; außer dem Stamm keine Tinte über der x-Höhe", () => {
   for (const p of variants(GLYPHS.k)) {
     const st = GLYPHS.k.draw(p, S), arm = st.find((x) => x.top !== undefined)!;

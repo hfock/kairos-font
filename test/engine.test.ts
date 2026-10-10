@@ -102,6 +102,35 @@ test("alter Pin auf einem Regler, den der Buchstabe nicht hat (h auf Kleinbuchst
   expect(pinned.variants[0].glyphs.map((g) => g.inst.p)).toEqual(free.variants[0].glyphs.map((g) => g.inst.p));
 });
 
+test("Verschränkung klein: Stift, ich, Hagen, Tafel, Pflicht", () => {
+  const v = (t: string) => layoutLine(t, opts()).variants[0];
+  const at = (l: ReturnType<typeof v>, i: number) => l.glyphs.find((g) => g.index === i)!;
+  expect(kinds(v("Stift"))[3]).toBe("cross"); // f t
+  expect(kinds(v("ich"))[1]).toBe("term"); // c h
+  const hagen = v("Hagen");
+  expect(kinds(hagen)[1]).toBe("tail"); // a g
+  expect(at(hagen, 2).inst.p.tail).toBeLessThan(0); // Schwanz reicht unter das a
+  const tafel = v("Tafel"), T = at(tafel, 0), a = at(tafel, 1);
+  expect(a.x + a.inst.prof.minX).toBeLessThan(T.x + T.inst.prof.maxX); // a steht unter dem T-Arm
+  // Haken zählt beim Abstand nicht: das l steht im Buchstabenabstand zum Querstrich (bei 150), der Haken (bis 160) endet mindestens armGap davor
+  const pf = v("Pflicht"), f = at(pf, 1), l = at(pf, 2), lx = l.x + l.inst.prof.minX - f.x;
+  expect(lx).toBeCloseTo(150 + FLAECHE_1902.gap, 0);
+  expect(lx - (50 + f.inst.p.hook)).toBeGreaterThanOrEqual(FLAECHE_1902.armGap);
+  // kommt das l näher (enger Satz), kürzt die Engine den Haken: endet armGap vor dem l
+  const tight = layoutLine("Pflicht", opts({ style: { ...FLAECHE_1902, gap: 20 } })).variants[0], tf = at(tight, 1), tl = at(tight, 2);
+  expect(tf.inst.p.hook).toBeLessThan(110);
+  expect(tf.x + 50 + tf.inst.p.hook).toBeCloseTo(tl.x + tl.inst.prof.minX - FLAECHE_1902.armGap, 0);
+});
+
+test("Pins: ein gepinnter f-Haken bleibt, wie er ist", () => {
+  // P0 f1 l2 i3 c4 h5 t6
+  for (const hook of [110, 160]) {
+    const r = layoutLine("Pflicht", opts({ pins: { letters: { 1: { hook } }, joins: {} } }));
+    expect(r.warnings).toEqual([]);
+    expect(r.variants[0].glyphs.find((g) => g.index === 1)!.inst.p.hook).toBe(hook);
+  }
+});
+
 test("unbekannte Zeichen werden zu Platzhaltern", () => {
   const r = layoutLine("~ÜBER", opts());
   expect(r.warnings).toEqual(["Zeichen „~“ noch nicht entworfen"]);

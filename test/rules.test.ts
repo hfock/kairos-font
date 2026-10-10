@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import { L, stroke } from "../src/geom";
 import { GLYPHS, defaults } from "../src/glyphs";
-import { apply, barLink, collides, instance, joinsFor, lightGap, trimTop, type Inst, type Join } from "../src/rules";
+import { apply, barLink, collides, dock, instance, joinsFor, lightGap, spacing, trimTop, type Inst, type Join } from "../src/rules";
 import { FLAECHE_1902 as S } from "../src/style";
 
 const inst = (c: string, p = {}) => instance(GLYPHS[c], { ...defaults(GLYPHS[c]), ...p }, S);
@@ -83,6 +83,17 @@ test("trimTop auch ohne Höhenregler (Kleinbuchstaben): Arm auf Versalhöhe ende
   expect(trimTop(f, 0, inst("I"), 200, S).p.arm).toBeCloseTo(200 - S.stroke / 2 - S.armGap, 0);
 });
 
+test("f-Haken zählt beim Abstand nur gekürzt; trimTop kürzt ihn armGap vor der Oberlänge, ein gepinnter Haken zählt ganz und bleibt", () => {
+  const f = inst("f"), long = inst("f", { hook: 160 }), l = inst("l"), pin = { hook: 160 };
+  const dx = spacing(long, l, S);
+  expect(dx).toBeCloseTo(spacing(f, l, S)); // der Querstrich bestimmt den Abstand, nicht der Haken
+  expect(dx + l.prof.minX).toBeCloseTo(150 + S.gap);
+  expect(50 + trimTop(long, 0, l, dx, S).p.hook).toBeCloseTo(dx + l.prof.minX - S.armGap, 0);
+  expect(trimTop(long, 0, l, dx, S, pin)).toBe(long);
+  expect(spacing(long, l, S, 0, pin) + l.prof.minX).toBeCloseTo(50 + 160 + S.gap); // gepinnt: Abstand vom Hakenende
+  expect(spacing(inst("F"), inst("H"), S)).toBeGreaterThan(spacing(inst("F", { top: -100 }), inst("H"), S)); // der obere F-Arm zählt ganz (nicht lose)
+});
+
 test("joinsFor bei den übrigen Versalien: TH teilt den Arm, RA die Füße, ZA unterfährt, UN den Stamm", () => {
   const types = (a: string, b: string) => joinsFor(inst(a), inst(b)).map((j) => j.sub ?? j.type);
   expect(types("T", "H")).toEqual(["none", "term"]);
@@ -99,6 +110,28 @@ test("c Strich teilen TH: der T-Arm endet auf dem H-Stamm (< 0,5 Einheiten), Pin
   expect(Math.abs(l.p.w + l.p.top - dx)).toBeLessThan(0.5); // H-Stamm liegt bei dx + 0
   const long = apply({ type: "share", sub: "term" }, inst("T", { top: 120 }), GLYPHS.H, defaults(GLYPHS.H), S)!;
   expect(Math.abs(GLYPHS.T.params.w.def + 120 - long.dx)).toBeLessThan(0.5);
+});
+
+test("joinsFor klein: Querstrich teilen (f, t), Unterlänge nach links (g, j, y), c-Ende in den Stamm", () => {
+  const types = (a: string, b: string) => joinsFor(inst(a), inst(b)).map((j) => j.sub ?? j.type);
+  for (const [a, b] of [["f", "t"], ["t", "t"], ["f", "f"], ["t", "f"]]) expect(types(a, b)).toEqual(["none", "cross"]);
+  for (const [a, b] of [["a", "g"], ["i", "j"], ["e", "y"]]) expect(types(a, b)).toEqual(["none", "tail"]);
+  expect(types("f", "l")).toEqual(["none"]); // f-Haken kürzen ist keine Verbindung
+  expect(types("c", "h")).toEqual(["none", "term"]);
+});
+
+test("Querstrich teilen: Abstand wie ohne Verbindung, der linke Querstrich läuft bis an den Anfang des rechten", () => {
+  const { l, r, dx } = join({ type: "share", sub: "cross" }, "f", "t");
+  expect(dx).toBeCloseTo(spacing(inst("f"), inst("t"), S));
+  expect(dock(l, "cross")!.x1).toBeCloseTo(dx + dock(r, "cross")!.x0);
+  expect(dock(l, "cross")!.y).toBe(dock(r, "cross")!.y);
+});
+
+test("Unterlänge nach links: der Schwanz endet eine Strichstärke rechts der linken Tinte des Nachbarn", () => {
+  const { r, dx } = join({ type: "tail" }, "a", "g");
+  expect(dx).toBeCloseTo(spacing(inst("a"), inst("g"), S));
+  expect(dx + dock(r, "tail")!.end).toBeCloseTo(inst("a").prof.minX + S.stroke);
+  expect(collides(inst("a"), 0, r, dx, S)).toBe(false); // unter dem a, nicht hinein
 });
 
 test("c Strich teilen nur, wo der Nachbar auf Höhe des Strichendes einen Stamm hat", () => {

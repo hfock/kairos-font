@@ -21,6 +21,8 @@ const LABEL: Record<string, string> = {
   term: "Strich teilen (Bogen/Arm)",
   stem: "Strich teilen (Stamm)",
   leg: "Strich teilen (Füße)",
+  cross: "Querstrich teilen",
+  tail: "Unterlänge unter den Nachbarn",
 };
 
 const $ = <T extends HTMLElement = HTMLInputElement>(id: string) => document.getElementById(id) as T;
