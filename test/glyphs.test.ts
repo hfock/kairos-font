@@ -8,6 +8,7 @@ const ALL = [..."ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÜẞ"];
 const DIGITS = [..."0123456789"];
 const MARKS = [...".,:;!?-–()/&'’\"„“‚‘«»€%@#+=*§…"]; // Spec M2 §3: Satz-Grundset und Plakat-Zeichen
 const HAF = "\uE000";
+const LOWER = [..."abcdefghijklmnopqrstuvwxyzäöüß"];
 const ink = (st: Stroke[]) => st.flatMap((x) => inkPoints(x, S.stroke / 2));
 const kinds = (c: string, p: Partial<Params> = {}) =>
   GLYPHS[c].docks({ ...defaults(GLYPHS[c]), ...p }, S).map((d) => d.kind + ("side" in d ? ":" + d.side : ""));
@@ -36,14 +37,15 @@ test("cutTop: eigene Oberkante vor Höhenregler, sonst Versalhöhe × h, ohne h 
 
 test("Tinte bleibt endlich und im Buchstabenfeld (Höhe, x ≥ linker Bezug)", () => {
   const bad = new Set<string>();
-  for (const g of [...[...ALL, ...DIGITS, ...MARKS, HAF].map((c) => GLYPHS[c]), PLACEHOLDER])
+  for (const g of [...[...ALL, ...LOWER, ...DIGITS, ...MARKS, HAF].map((c) => GLYPHS[c]), PLACEHOLDER])
     for (const p of variants(g)) {
       const top = S.capHeight * (p.h ?? 1), bottom = -(g.desc ?? 0); // Satzzeichen ohne Höhenregler: volle Höhe; Komma mit Unterlänge
+      const stretched = p.tail < (g.params.tail?.def ?? -Infinity); // nach links verlängerte Unterlänge (g, j, y): ragt gewollt über den linken Bezug
       for (const q of ink(g.draw(p, S))) {
         // Füße und Spitzen reichen bis eine Strichstärke über Grund- und Oberkante hinaus, der Renderer schneidet dort waagrecht ab;
         // die waagrechte Schnittkante flacher Beine (X, Y breit und kurz) ragt dabei bis Strich/2 ÷ sin θ ≈ 1,05 Striche vor x = 0
         const ok = Number.isFinite(q.x) && Number.isFinite(q.y) && q.y >= bottom - S.stroke && q.y <= top + S.stroke;
-        if (!ok || !(q.x >= -1.1 * S.stroke && q.x < 1000)) bad.add(`${g.char} ${JSON.stringify(p)}`);
+        if (!ok || !((stretched || q.x >= -1.1 * S.stroke) && q.x < 1000)) bad.add(`${g.char} ${JSON.stringify(p)}`);
       }
     }
   expect([...bad]).toEqual([]);
@@ -191,7 +193,6 @@ test("@: die Beine des kleinen A laufen unten lotrecht aus (waagrechter Fuß ohn
   expect(legs.segs[4].p.x).toBe(legs.segs[3].p.x);
 });
 
-const LOWER = [..."abcdefghijklmnopqrstuvwxyzäöüß"];
 const ASC = new Set([..."bdfhklß"]), DESC = new Set([..."gjpqy"]);
 
 test("Kleinbuchstaben a–z, äöü, ß sind entworfen, ohne Höhenregler", () => {

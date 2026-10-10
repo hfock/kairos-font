@@ -50,6 +50,10 @@ test("unerfüllbarer Pin → Hinweis, Satz trotzdem da", () => {
   expect(r.variants.length).toBeGreaterThan(0);
 });
 
+test("ohne Pins: Hinweis auf fehlenden kollisionsfreien Platz, nicht auf einen Pin", () => {
+  expect(layoutLine("y.y", opts()).warnings).toEqual(["Kein kollisionsfreier Platz für „.y“"]);
+});
+
 test("Pins außerhalb des Spielraums: Hinweis statt Absturz oder stiller Übernahme", () => {
   const wide = layoutLine("FL", opts({ pins: { letters: { 0: { w: 1000 } }, joins: {} }, targetWidth: 800 }));
   expect(wide.variants.length).toBeGreaterThan(0);

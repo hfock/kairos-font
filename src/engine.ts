@@ -111,7 +111,8 @@ function searchWord(word: Letter[], o: Options, warn: Set<string>): Node[] {
   for (let k = 1; k < word.length; k++) {
     let next = beam.flatMap((n) => expand(n, word[k], o, true));
     if (!next.length) {
-      warn.add(`Pin bei „${word[k - 1].char}${word[k].char}“ nicht erfüllbar`);
+      const pair = word[k - 1].char + word[k].char, pinned = Object.keys(o.pins.letters).length + Object.keys(o.pins.joins).length > 0;
+      warn.add(pinned ? `Pin bei „${pair}“ nicht erfüllbar` : `Kein kollisionsfreier Platz für „${pair}“`);
       next = beam.flatMap((n) => expand(n, word[k], { ...o, pins: { letters: o.pins.letters, joins: {} } }, true));
       if (!next.length) next = beam.flatMap((n) => expand(n, word[k], o, false));
     }
