@@ -5,12 +5,11 @@ import { GLYPHS } from "../src/glyphs";
 const data = fontData("test");
 const byName = new Map(data.glyphs.map((g) => [g.name, g]));
 
-test("jedes Zeichen hat eine Grundglyphe; Kleinbuchstaben zeigen die Versalien, ß zeigt ẞ, HAF liegt auf U+E000", () => {
-  const fontChars = Object.keys(GLYPHS).filter((c) => c.toUpperCase() === c); // Kleinbuchstaben erst ab Task 4 im Font
-  for (const c of fontChars) expect(byName.get(glyphName(c))?.unicodes).toContain(c.codePointAt(0)!);
-  expect(byName.get("A")!.unicodes).toEqual([0x41, 0x61]);
-  expect(byName.get("Adieresis")!.unicodes).toEqual([0xc4, 0xe4]);
-  expect(byName.get("uni1E9E")!.unicodes).toEqual([0x1e9e, 0xdf]);
+test("jedes Zeichen hat eine Grundglyphe mit genau seinem Codepunkt, HAF liegt auf U+E000", () => {
+  for (const c of Object.keys(GLYPHS)) expect(byName.get(glyphName(c))?.unicodes).toEqual([c.codePointAt(0)!]);
+  expect(byName.get("A")!.unicodes).toEqual([0x41]);
+  expect(byName.get("Adieresis")!.unicodes).toEqual([0xc4]);
+  expect(byName.get("uni1E9E")!.unicodes).toEqual([0x1e9e]);
   expect(byName.get("H_A_F")!.unicodes).toEqual([0xe000]);
   expect(byName.get("space")!.advance).toBe(80); // 136 zwischen den Wortkästen (Seitenabstände + 80) – so eng setzt auch die App mindestens; nach der Tinte darf sie weiter setzen
   expect(data.glyphs.map((g) => g.name).filter((n) => !/^[A-Za-z0-9._]+$/.test(n))).toEqual([]); // gültige Glyphennamen (Adobe Glyph List)
@@ -31,6 +30,19 @@ test("Sollwerte: FLÄCHE mit gekürztem F-Arm, Namens-Ligatur, Monogramm nur als
   expect(words("HAF", { dlig: true })).toEqual(["H_A_F"]);
   expect(words("HAFEN", { dlig: true })).toEqual(["H A F.nest E.short N"]);
   for (const e of data.expect) for (const w of e.words) for (const g of w) expect(byName.has(g.name)).toBe(true);
+});
+
+test("Kleinbuchstaben haben eigene Glyphen; Namenszug und Monogramm nur in Versalien", () => {
+  expect(byName.get("a")!.unicodes).toEqual([0x61]);
+  expect(byName.get("A")!.unicodes).toEqual([0x41]);
+  expect(byName.get("germandbls")!.unicodes).toEqual([0xdf]);
+  expect(byName.get("uni1E9E")!.unicodes).toEqual([0x1e9e]);
+  expect(data.fea).toMatch(/@WORD = \[[^\]]*\ba\b[^\]]*\]/); // Kleinbuchstaben blockieren die Ligaturen am Wortrand
+  const words = (t: string, f = {}) => data.expect.find((e) => e.text === t && JSON.stringify(e.features) === JSON.stringify(f))?.words.map((w) => w.map((g) => g.name).join(" "));
+  expect(words("Hagen Aad Fock")?.[0]).not.toContain("H_A_G_E_N");
+  expect(words("haf", { dlig: true })).toEqual(["h a f"]);
+  expect(words("Fd")).toEqual(["F.nest.t50 d"]); // schon die Oberlänge des d kürzt den F-Arm
+  expect(data.fea).toContain("sub F' d by F.nest.t50;");
 });
 
 test("Sollwerte für Ketten mit Varianten: GLAS, TEAM, OFFEN, AUFTAKT", () => {

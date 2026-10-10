@@ -21,7 +21,7 @@ export type FontData = {
 };
 
 const NAMES: Record<string, string> = {
-  Ä: "Adieresis", Ö: "Odieresis", Ü: "Udieresis", ẞ: "uni1E9E",
+  Ä: "Adieresis", Ö: "Odieresis", Ü: "Udieresis", ẞ: "uni1E9E", ä: "adieresis", ö: "odieresis", ü: "udieresis", ß: "germandbls",
   "0": "zero", "1": "one", "2": "two", "3": "three", "4": "four", "5": "five", "6": "six", "7": "seven", "8": "eight", "9": "nine",
   ".": "period", ",": "comma", ":": "colon", ";": "semicolon", "!": "exclam", "?": "question", "-": "hyphen", "–": "endash",
   "(": "parenleft", ")": "parenright", "/": "slash", "&": "ampersand", "'": "quotesingle", "’": "quoteright", '"': "quotedbl",
@@ -29,10 +29,8 @@ const NAMES: Record<string, string> = {
   "€": "Euro", "%": "percent", "@": "at", "#": "numbersign", "+": "plus", "=": "equal", "*": "asterisk", "§": "section", "…": "ellipsis",
   "\uE000": "H_A_F",
 };
-/** Glyphenname nach Adobe Glyph List; A–Z heißen wie ihr Zeichen. */
+/** Glyphenname nach Adobe Glyph List; A–Z und a–z heißen wie ihr Zeichen. */
 export const glyphName = (c: string) => NAMES[c] ?? c;
-/** Zeichentabelle: Kleinbuchstaben zeigen bis M4 die Versalien, ß zeigt ẞ. */
-const unicodes = (c: string) => [...new Set([c, c.toLowerCase()])].map((x) => x.codePointAt(0)!);
 
 const NAME_LIG = "H_A_G_E_N_space_A_A_D_space_F_O_C_K";
 const SB = S.gap / 2; // Seitenabstand je Seite: halber Buchstabenabstand
@@ -62,7 +60,7 @@ const best = (text: string) => {
 };
 const floor5 = (v: number) => Math.floor(v / 5) * 5;
 /** Regler, die erst die eigene rechte Verbindung ändert (Arm, Fuß, Bogenende): beim Setzen neben den linken Nachbarn galten noch die Startwerte. */
-const OWN_RIGHT = ["arm", "top", "foot", "wb"];
+const OWN_RIGHT = ["arm", "top", "foot", "wb", "term"];
 const placed = (g: { char: string; inst: Inst }) => {
   const d = defaults(GLYPHS[g.char]), p = { ...g.inst.p };
   for (const k of OWN_RIGHT) if (k in d) p[k] = d[k];
@@ -71,7 +69,7 @@ const placed = (g: { char: string; inst: Inst }) => {
 
 /** Alle Font-Daten aus der Engine. */
 export function fontData(version: string): FontData {
-  const chars = Object.keys(GLYPHS).filter((c) => c.toUpperCase() === c); // Kleinbuchstaben kommen erst mit Task 4 (M4) in den Font
+  const chars = Object.keys(GLYPHS);
   const reg = new Map<string, Glyph>();
   const keyOf = (c: string, p: Params) => c + JSON.stringify(Object.keys(GLYPHS[c].params).map((k) => Math.round(p[k] * 100) / 100));
   /** Glyphe für Zeichen c mit Reglern p; Varianten heißen nach den geänderten Reglern. */
@@ -80,7 +78,8 @@ export function fontData(version: string): FontData {
     const known = reg.get(k);
     if (known) return known;
     const d = defaults(GLYPHS[c]), changed = (q: string) => q in d && Math.abs(p[q] - d[q]) > 1e-6;
-    const n0 = name ?? [glyphName(c), changed("h") && "short", (changed("arm") || changed("top")) && "nest", changed("foot") && "foot", changed("legL") && "lift", changed("wb") && "term"]
+    const n0 = name ?? [glyphName(c), changed("h") && "short", (changed("arm") || changed("top")) && "nest", changed("foot") && "foot", changed("legL") && "lift",
+      (changed("wb") || changed("term")) && "term", changed("cross") && "cross", changed("tail") && "tail", changed("hook") && "trim"]
       .filter(Boolean).join(".");
     // gleiche Rolle, andere Werte (E-Fuß vor A kürzer als vor Ä): durchnummerieren
     const taken = (x: string) => [...reg.values()].some((g) => g.name === x);
@@ -95,8 +94,13 @@ export function fontData(version: string): FontData {
 
   // Paare: was die Engine bei Verschränkung 0,5 aus zwei Zeichen macht
   type Join = { l: Glyph; r: Glyph; dx: number };
-  const joins: Join[] = [], rules = { nestX: new Map<string, Glyph>(), under: [] as Join[], term: [] as Join[], skip: [] as string[][], trim: [] as [string, string, Glyph][] };
-  let fNest: Glyph | null = null;
+  const joins: Join[] = [], rules = { nestX: new Map<string, Glyph>(), trimX: new Map<string, Glyph>(), under: [] as Join[], term: [] as Join[], skip: [] as string[][], trim: [] as [string, string, Glyph][] };
+  const nests: { x: string; p: Params; r: Glyph; dx: number }[] = [];
+  /** F mit gekürztem oberem Arm, auf 5 abgerundet; Glyphennamen ohne Minus. */
+  const trimF = (p: Params) => {
+    const t = floor5(p.top);
+    return glyph("F", { ...p, top: t }, `F.nest.t${t < 0 ? "m" + -t : t}`);
+  };
   const sweep: string[] = []; // Abgleich (Spec §7.1): alle Paare und F-Dreierfolgen werden Sollwerte
   const record = (type: string, l: Glyph, r: Glyph, dx: number) => {
     const j = { l, r, dx };
@@ -114,10 +118,19 @@ export function fontData(version: string): FontData {
       if (joinsFor(base(a).inst, base(b).inst).length < 2) continue; // nur „keine“ möglich
       const v = best(a + b), j = v.joins[0], [ga, gb] = v.glyphs;
       if (j.type === "none") continue;
-      const l = glyph(a, ga.p), r = glyph(b, gb.p);
-      record(j.type, l, r, gb.x - ga.x);
-      if (j.type === "nest") (fNest = l), rules.nestX.set(b, r);
+      const r = glyph(b, gb.p);
+      if (j.type === "nest") nests.push({ x: b, p: ga.p, r, dx: gb.x - ga.x }); // erst wenn das Regel-F feststeht
+      else record(j.type, glyph(a, ga.p), r, gb.x - ga.x);
     }
+  // Verschachteln: das Regel-F hat den längsten oberen Arm; kürzt ihn schon der verschachtelte Buchstabe selbst (d), eigene Variante
+  const top = Math.max(...nests.map((n) => n.p.top));
+  const fNest = glyph("F", nests.find((n) => n.p.top === top)!.p);
+  for (const n of nests) {
+    const f = n.p.top < top - 0.5 ? trimF(n.p) : fNest;
+    if (f !== fNest) rules.trimX.set(n.x, f);
+    record("nest", f, n.r, n.dx);
+    rules.nestX.set(n.x, n.r);
+  }
 
   // Dreierfolgen F + X + Z: verschachtelt die Engine trotzdem, kürzt sie den oberen F-Arm, verbindet X weiter?
   for (const x of rules.nestX.keys())
@@ -129,10 +142,9 @@ export function fontData(version: string): FontData {
         rules.skip.push([fn, xn, zn]);
         continue;
       }
-      let f = fNest!;
-      if (gF.p.top < fNest!.inst.p.top - 0.5) {
-        const t = floor5(gF.p.top);
-        f = glyph("F", { ...gF.p, top: t }, `F.nest.t${t < 0 ? "m" + -t : t}`); // Glyphennamen ohne Minus
+      let f = rules.trimX.get(x) ?? fNest;
+      if (gF.p.top < f.inst.p.top - 0.5) {
+        f = trimF(gF.p);
         rules.trim.push([xn, zn, f]);
       }
       // X.short, oder X.short.foot / X.short.term, wenn X rechts weiter verbindet; ein zweites Verschachteln kann der Font nicht
@@ -158,19 +170,19 @@ export function fontData(version: string): FontData {
   const notdef = instance(PLACEHOLDER, defaults(PLACEHOLDER), S);
   const glyphs: FontGlyph[] = [
     { name: ".notdef", unicodes: [], advance: advance(notdef), parts: [part(notdef, ox(notdef))] },
-    ...all.map((g) => ({ name: g.name, unicodes: g === base(g.char) ? unicodes(g.char) : [], advance: advance(g.inst), parts: [part(g.inst, ox(g.inst))] })),
+    ...all.map((g) => ({ name: g.name, unicodes: g === base(g.char) ? [g.char.codePointAt(0)!] : [], advance: advance(g.inst), parts: [part(g.inst, ox(g.inst))] })),
     { name: "space", unicodes: [0x20], advance: S.wordGap - S.gap, parts: [] },
     { name: "uni00A0", unicodes: [0xa0], advance: S.wordGap - S.gap, parts: [] },
     nameLigature(),
   ];
-  const fea = features(reg, fNest!, rules);
+  const fea = features(reg, fNest, rules);
   return {
     format: FORMAT,
     info: { family: "Neustift", style: "Regular", version, unitsPerEm: 1000, capHeight: S.capHeight, ascender: 760, descender: -240, stroke: S.stroke },
     glyphs,
     kerning: [...kern.values()].filter(([, , v]) => v !== 0),
     fea,
-    expect: expectations(reg, fNest!, sweep),
+    expect: expectations(reg, fNest, sweep),
   };
 }
 
@@ -186,11 +198,11 @@ function nameLigature(): FontGlyph {
   };
 }
 
-type Rules = { nestX: Map<string, Glyph>; under: { l: Glyph; r: Glyph }[]; term: { l: Glyph; r: Glyph }[]; skip: string[][]; trim: [string, string, Glyph][] };
+type Rules = { nestX: Map<string, Glyph>; trimX: Map<string, Glyph>; under: { l: Glyph; r: Glyph }[]; term: { l: Glyph; r: Glyph }[]; skip: string[][]; trim: [string, string, Glyph][] };
 
 /** Feature-Datei: liga (Name), dlig (HAF), calt (verschachteln, unterfahren, Bogenende) in dieser Reihenfolge. */
 function features(reg: Map<string, Glyph>, fNest: Glyph, r: Rules): string {
-  const word = [...reg.values()].filter((g) => /^[A-ZÄÖÜẞ0-9]$/.test(g.char)).map((g) => g.name);
+  const word = [...reg.values()].filter((g) => /^[A-Za-zÄÖÜäöüẞß0-9]$/.test(g.char)).map((g) => g.name);
   const seq = (t: string) => [...t].map((c) => (c === " " ? "space" : glyphName(c)));
   const marked = (t: string) => seq(t).map((n) => n + "'").join(" ");
   const out = ["languagesystem DFLT dflt;", "languagesystem latn dflt;", "", `@WORD = [${word.join(" ")}];`, ""];
@@ -202,12 +214,13 @@ function features(reg: Map<string, Glyph>, fNest: Glyph, r: Rules): string {
   }
   // calt-Lookups
   const nestX = [...r.nestX.keys()].map(glyphName);
-  const fnests = [...new Set([fNest, ...r.trim.map(([, , f]) => f)])].map((g) => g.name);
+  const fnests = [...new Set([fNest, ...r.trimX.values(), ...r.trim.map(([, , f]) => f)])].map((g) => g.name);
   out.push(`@FNEST = [${fnests.join(" ")}];`);
   out.push(`lookup NEST_LEFT {\n${[
     "  ignore sub @FNEST F';", // ein verschachteltes F verschachtelt nicht noch einmal
     ...r.skip.map(([f, x, z]) => `  ignore sub ${f}' ${x} ${z};`),
     ...r.trim.map(([x, z, f]) => `  sub F' ${x} ${z} by ${f.name};`),
+    ...[...r.trimX].map(([x, f]) => `  sub F' ${glyphName(x)} by ${f.name};`),
     `  sub F' [${nestX.join(" ")}] by ${fNest.name};`,
   ].join("\n")}\n} NEST_LEFT;`);
   const changed = [...r.nestX].filter(([c, g]) => g.name !== glyphName(c));
@@ -226,6 +239,7 @@ function features(reg: Map<string, Glyph>, fNest: Glyph, r: Rules): string {
 const TESTS: [string, Record<string, boolean>][] = [
   ["FLÄCHE", {}], ["fläche", {}], ["DIE FLÄCHE", {}], ["HAGEN AAD FOCK", {}], ["HAF", { dlig: true }], ["HAF", {}], ["HAFEN", { dlig: true }],
   ["WIENER WERKSTÄTTE", {}], ["THEATER", {}], ["ZAUBER", {}], ["GLAS", {}], ["TEAM", {}], ["OFFEN", {}], ["AUFTAKT", {}],
+  ["Hagen Aad Fock", {}], ["haf", { dlig: true }], ["Hagen", {}], ["Tafel", {}], ["Stift", {}], ["ich", {}], ["Die Fläche", {}], ["Pflicht", {}], ["Kaffee", {}],
 ];
 
 /** Sollwerte: Glyphenfolge und Ursprünge je Wort wie die Engine; bei einem Wort zusätzlich die Striche für den Flächenvergleich.
@@ -237,9 +251,8 @@ function expectations(reg: Map<string, Glyph>, fNest: Glyph, sweep: string[]): E
     return reg.get(k)?.name ?? `?${c}`;
   };
   const entry = (text: string, features: Record<string, boolean>): Expect => {
-    const upper = text.toUpperCase();
-    if (upper === hagen.text) return { text, features, words: [[{ name: NAME_LIG, x: 0 }]], parts: null };
-    if (upper === "HAF" && features.dlig) return { text, features, words: [[{ name: "H_A_F", x: 0 }]], parts: null };
+    if (text === hagen.text) return { text, features, words: [[{ name: NAME_LIG, x: 0 }]], parts: null };
+    if (text === "HAF" && features.dlig) return { text, features, words: [[{ name: "H_A_F", x: 0 }]], parts: null };
     const gs = best(text).glyphs.map((g) => ({ ...g, inst: instance(GLYPHS[g.char], g.p, S) })), words: ExpectGlyph[][] = [];
     let start = 0;
     gs.forEach((g, i) => {

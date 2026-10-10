@@ -26,12 +26,11 @@ function joinCost(j: Join, interlock: number): number {
   return (base === null ? 0 : base - g) + (j.bar ? WEIGHTS.bar - g : 0);
 }
 
-/** Text in Wörter aus Buchstaben zerlegen; Versalien, unbekannte Zeichen → Platzhalter. */
+/** Text in Wörter aus Buchstaben zerlegen; Zeichen wie getippt, unbekannte → Platzhalter. */
 function words(text: string, warn: Set<string>): Letter[][] {
   const out: Letter[][] = [];
   let cur: Letter[] = [];
-  [...text].forEach((raw, index) => {
-    const char = raw === "ß" ? "ẞ" : raw.toUpperCase(); // toUpperCase macht aus ß zwei Buchstaben
+  [...text].forEach((char, index) => {
     if (char.trim() === "") {
       if (cur.length) out.push(cur);
       cur = [];
