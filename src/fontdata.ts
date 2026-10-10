@@ -100,7 +100,7 @@ export function fontData(version: string): FontData {
   // Paare: was die Engine bei Verschränkung 0,5 aus zwei Zeichen macht
   type Join = { l: Glyph; r: Glyph; dx: number };
   const joins: Join[] = [];
-  const rules: Rules = { nestX: new Map(), trimX: new Map(), under: [], term: [], cross: [], tail: [], hook: [], skip: [], trim: [], block: new Map() };
+  const rules: Rules = { nestX: new Map(), trimX: new Map(), under: [], term: [], cross: [], tail: [], hook: [], skip: [], trim: [], block: new Map(), untail: new Map() };
   const nests: { x: string; p: Params; r: Glyph; dx: number }[] = [];
   /** F mit gekürztem oberem Arm, auf 5 abgerundet; Glyphennamen ohne Minus. */
   const trimF = (p: Params) => {
@@ -180,6 +180,16 @@ export function fontData(version: string): FontData {
       if (keyOf(g.char, g.p) === keyOf(g.char, defaults(GLYPHS[g.char]))) rules.block.set(name, [...(rules.block.get(name) ?? []), z]);
     }
 
+  // Unterlänge davor (Komma, „, g …): setzt die Engine hinter Z keinen Schwanz unter L, darf der Font es auch nicht („Gymnasium“, „Typ“)
+  const descs = chars.filter((c) => GLYPHS[c].desc);
+  for (const j of rules.tail)
+    for (const z of descs) {
+      const t = z + j.l.char + j.r.char, k = `${j.l.name} ${glyphName(j.r.char)}`;
+      sweep.push(t);
+      const g = best(t).glyphs[2];
+      if (keyOf(g.char, g.p) === keyOf(g.char, defaults(GLYPHS[g.char])) && !rules.untail.get(k)?.includes(z)) rules.untail.set(k, [...(rules.untail.get(k) ?? []), z]);
+    }
+
   // Unterschneidung: freie Seiten gegeneinander mit dem Abstand „keine Verbindung“, verbundene Paare mit dem Engine-Abstand
   const all = [...reg.values()];
   const leftFree = all.filter((g) => !g.role.left), rightFree = all.filter((g) => !g.role.right);
@@ -225,8 +235,8 @@ function nameLigature(): FontGlyph {
 }
 
 type Pair = { l: Glyph; r: Glyph };
-/** block: linke Variante → Zeichen, hinter denen die Engine sie nicht setzt; under: unterfahren, term: Bogenende, cross: Querstrich teilen, tail: Unterlänge nach links, hook: f-Haken gekürzt; skip/trim: F-Dreierfolgen. */
-type Rules = { nestX: Map<string, Glyph>; trimX: Map<string, Glyph>; under: Pair[]; term: Pair[]; cross: Pair[]; tail: Pair[]; hook: Pair[]; skip: string[][]; trim: [string, string, Glyph][]; block: Map<string, string[]> };
+/** block: linke Variante → Zeichen, hinter denen die Engine sie nicht setzt; under: unterfahren, term: Bogenende, cross: Querstrich teilen, tail: Unterlänge nach links, hook: f-Haken gekürzt; skip/trim: F-Dreierfolgen; untail: „L R“ → Zeichen mit Unterlänge, hinter denen R keinen Schwanz bekommt. */
+type Rules = { nestX: Map<string, Glyph>; trimX: Map<string, Glyph>; under: Pair[]; term: Pair[]; cross: Pair[]; tail: Pair[]; hook: Pair[]; skip: string[][]; trim: [string, string, Glyph][]; block: Map<string, string[]>; untail: Map<string, string[]> };
 
 /** Feature-Datei: liga (Name), dlig (HAF), calt (verschachteln, unterfahren, Bogenende, Querstrich, Unterlänge, f-Haken) in dieser Reihenfolge. */
 function features(reg: Map<string, Glyph>, fNest: Glyph, r: Rules): string {
@@ -272,7 +282,8 @@ function features(reg: Map<string, Glyph>, fNest: Glyph, r: Rules): string {
   };
   left("TERM_LEFT", r.term);
   left("CROSS_LEFT", r.cross);
-  out.push(`lookup TAIL_RIGHT {\n${uniq(r.tail.map((j) => `  sub ${j.l.name} ${glyphName(j.r.char)}' by ${j.r.name};`)).join("\n")}\n} TAIL_RIGHT;`);
+  const untail = [...r.untail].map(([lr, zs]) => `  ignore sub [${zs.flatMap((z) => variants(z).map((g) => g.name)).join(" ")}] ${lr}';`);
+  out.push(`lookup TAIL_RIGHT {\n${[...untail, ...uniq(r.tail.map((j) => `  sub ${j.l.name} ${glyphName(j.r.char)}' by ${j.r.name};`))].join("\n")}\n} TAIL_RIGHT;`);
   left("TRIM_LEFT", r.hook);
   const calt = ["NEST_LEFT", "NEST_RIGHT", "UNDERRUN_LEFT", "UNDERRUN_RIGHT", "TERM_LEFT", "CROSS_LEFT", "TAIL_RIGHT", "TRIM_LEFT"];
   out.push(`feature calt {\n${calt.map((l) => `  lookup ${l};`).join("\n")}\n} calt;`);
@@ -284,6 +295,7 @@ const TESTS: [string, Record<string, boolean>][] = [
   ["WIENER WERKSTÄTTE", {}], ["THEATER", {}], ["ZAUBER", {}], ["GLAS", {}], ["TEAM", {}], ["OFFEN", {}], ["AUFTAKT", {}],
   ["Hagen Aad Fock", {}], ["haf", { dlig: true }], ["Hagen", {}], ["Tafel", {}], ["Stift", {}], ["ich", {}], ["Die Fläche", {}], ["Pflicht", {}], ["Kaffee", {}],
   ["Wetter", {}], ["Acht", {}], ["Echo", {}], ["Schrift", {}], ["bett", {}], ["schiff", {}], ["Mannschaft", {}],
+  ["„Gymnasium“", {}], ["„Typ“", {}], // Unterlänge hinter einer Unterlänge: kein Schwanz unter das T
 ];
 
 /** Sollwerte: Glyphenfolge und Ursprünge je Wort wie die Engine; bei einem Wort zusätzlich die Striche für den Flächenvergleich.
