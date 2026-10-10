@@ -52,6 +52,17 @@ test("minDist: findet Lichtweite bis limit, sonst Infinity", () => {
   expect(minDist(a, 0, a, 100, 20)).toBe(Infinity);
 });
 
+test("minDist: zwischengespeichertes Raster rechnet wie alle Paare (Bögen, verschoben, mehrfach abgefragt)", () => {
+  const a = inkPoints(stroke(0, -130, C(0, 200, 150, 300, 150, 700)), 13), b = inkPoints(stroke(40, 0, C(-60, 100, -60, 500, 40, 600)), 13);
+  const brute = (ax: number, bx: number, limit: number) => {
+    let best = Infinity;
+    for (const p of a) for (const q of b) best = Math.min(best, Math.hypot(p.x + ax - (q.x + bx), p.y - q.y));
+    return best <= limit ? best : Infinity;
+  };
+  for (const [ax, bx, limit] of [[0, 0, 20], [0, 187.3, 20], [12.5, 190, 20], [0, 240, 100], [-30, 200, 20]])
+    expect([ax, bx, limit, minDist(a, ax, b, bx, limit)]).toEqual([ax, bx, limit, brute(ax, bx, limit)]);
+});
+
 test("pathData + shift", () => {
   const s = stroke(0, 0, L(0, 100), C(0, 150, 50.04, 200, 100, 200));
   expect(pathData(s)).toBe("M0 0L0 100C0 150 50 200 100 200");

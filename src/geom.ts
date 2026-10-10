@@ -108,37 +108,62 @@ export function gapOffset(l: Profile, r: Profile, gap: number, minY = 0): number
   return gap - best;
 }
 
+type Ext = { lo: number; hi: number; ylo: number; yhi: number };
+const exts = new WeakMap<Pt[], Ext>();
+/** Ausdehnung einer Tintenpunktmenge, je Menge nur einmal gemessen. */
+function ext(a: Pt[]): Ext {
+  let e = exts.get(a);
+  if (!e) {
+    e = { lo: Infinity, hi: -Infinity, ylo: Infinity, yhi: -Infinity };
+    for (const p of a) {
+      if (p.x < e.lo) e.lo = p.x;
+      if (p.x > e.hi) e.hi = p.x;
+      if (p.y < e.ylo) e.ylo = p.y;
+      if (p.y > e.yhi) e.yhi = p.y;
+    }
+    exts.set(a, e);
+  }
+  return e;
+}
+/** Punkte in Zeilen der Höhe limit, je Zeile nach x sortiert (lokale Koordinaten) – je Menge und limit nur einmal gebaut. */
+type Rows = { r0: number; xs: Float64Array[]; ys: Float64Array[] };
+const grids = new WeakMap<Pt[], Map<number, Rows>>();
+function rows(a: Pt[], limit: number): Rows {
+  let m = grids.get(a);
+  if (!m) grids.set(a, (m = new Map()));
+  let g = m.get(limit);
+  if (!g) {
+    const e = ext(a), r0 = Math.floor(e.ylo / limit), buckets: Pt[][] = Array.from({ length: Math.floor(e.yhi / limit) - r0 + 1 }, () => []);
+    for (const p of a) buckets[Math.floor(p.y / limit) - r0].push(p);
+    for (const b of buckets) b.sort((p, q) => p.x - q.x);
+    g = { r0, xs: buckets.map((b) => Float64Array.from(b, (p) => p.x)), ys: buckets.map((b) => Float64Array.from(b, (p) => p.y)) };
+    m.set(limit, g);
+  }
+  return g;
+}
+
 /** Kleinster Abstand zweier Tintenpunktmengen (a um ax, b um bx verschoben); Infinity, wenn > limit. */
 export function minDist(a: Pt[], ax: number, b: Pt[], bx: number, limit: number): number {
-  let aLo = Infinity, aHi = -Infinity, bLo = Infinity, bHi = -Infinity;
-  for (const p of a) { aLo = Math.min(aLo, p.x + ax); aHi = Math.max(aHi, p.x + ax); }
-  for (const p of b) { bLo = Math.min(bLo, p.x + bx); bHi = Math.max(bHi, p.x + bx); }
-  const lo = Math.max(aLo, bLo) - limit, hi = Math.min(aHi, bHi) + limit;
-  if (lo > hi) return Infinity;
-  const grid = new Map<number, Pt[]>();
-  const key = (cx: number, cy: number) => cx * 4096 + cy;
-  for (const p of a) {
-    const x = p.x + ax;
-    if (x < lo || x > hi) continue;
-    const k = key(Math.floor(x / limit), Math.floor(p.y / limit));
-    const cell = grid.get(k);
-    if (cell) cell.push({ x, y: p.y });
-    else grid.set(k, [{ x, y: p.y }]);
-  }
+  if (!a.length || !b.length) return Infinity;
+  const ea = ext(a), eb = ext(b);
+  if (ea.lo + ax - limit > eb.hi + bx || eb.lo + bx - limit > ea.hi + ax || ea.ylo - limit > eb.yhi || eb.ylo - limit > ea.yhi) return Infinity;
+  const { r0, xs, ys } = rows(a, limit);
   let best = Infinity;
   for (const q of b) {
-    const x = q.x + bx;
-    if (x < lo || x > hi) continue;
-    const cx = Math.floor(x / limit), cy = Math.floor(q.y / limit);
-    for (let i = -1; i <= 1; i++)
-      for (let j = -1; j <= 1; j++) {
-        const cell = grid.get(key(cx + i, cy + j));
-        if (!cell) continue;
-        for (const p of cell) {
-          const d = Math.hypot(p.x - x, p.y - q.y);
-          if (d < best) best = d;
-        }
+    const x = q.x + bx, from = x - ax - limit - 1, to = x - ax + limit + 1, cy = Math.floor(q.y / limit) - r0; // 1 Einheit Spiel gegen Rundung
+    for (let r = Math.max(0, cy - 1); r <= Math.min(xs.length - 1, cy + 1); r++) {
+      const rx = xs[r], ry = ys[r];
+      let i = 0, j = rx.length;
+      while (i < j) {
+        const m = (i + j) >> 1;
+        if (rx[m] < from) i = m + 1;
+        else j = m;
       }
+      for (; i < rx.length && rx[i] <= to; i++) {
+        const d = Math.hypot(rx[i] + ax - x, ry[i] - q.y);
+        if (d < best) best = d;
+      }
+    }
   }
   return best <= limit ? best : Infinity;
 }
