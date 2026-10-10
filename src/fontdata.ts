@@ -41,11 +41,15 @@ const ox = (i: Inst) => lsb(i) - i.prof.minX; // Verschiebung Engine → Font: d
 const advance = (i: Inst) => Math.round(i.prof.maxX - i.prof.minX + lsb(i) + rsb(i));
 /** Unterschneidung, damit r im Font dort steht, wo die Engine es um dx neben l setzt (mit gerundetem Vorschub gerechnet). */
 const kernFor = (l: Inst, r: Inst, dx: number) => Math.round(dx - ox(r) + ox(l) - advance(l));
-const part = (i: Inst, dx: number): FontPart => ({
-  strokes: i.strokes.map((st) => shift(st, dx)),
-  bottom: -(i.def.desc ?? 0),
-  top: i.def.desc && !i.def.top ? S.capHeight : cutTop(i.def, i.p, S),
-});
+/** Teile einer Glyphe: alle Striche im Band der Glyphe, dazu je Strich mit eigener Oberkante (k-Arm) ein Teil mit eigenem Band. */
+const parts = (i: Inst, dx: number): FontPart[] => {
+  const bottom = -(i.def.desc ?? 0), top = i.def.desc && !i.def.top ? S.capHeight : cutTop(i.def, i.p, S);
+  const own = i.strokes.filter((st) => st.top !== undefined);
+  return [
+    { strokes: i.strokes.filter((st) => st.top === undefined).map((st) => shift(st, dx)), bottom, top },
+    ...own.map((st) => ({ strokes: [shift(st, dx)], bottom, top: Math.min(top, st.top!) })),
+  ];
+};
 
 type Glyph = { name: string; char: string; inst: Inst; role: { left: boolean; right: boolean } }; // left: steht links in einer Verbindung (rechte Seite verbunden); right: steht rechts (linke Seite verbunden)
 const opts = { style: S, interlock: 0.5, targetWidth: null, pins: { letters: {}, joins: {} } };
@@ -171,8 +175,8 @@ export function fontData(version: string): FontData {
   // Glyphen: Grundzeichen, Varianten, Leerzeichen, Namens-Ligatur, .notdef
   const notdef = instance(PLACEHOLDER, defaults(PLACEHOLDER), S);
   const glyphs: FontGlyph[] = [
-    { name: ".notdef", unicodes: [], advance: advance(notdef), parts: [part(notdef, ox(notdef))] },
-    ...all.map((g) => ({ name: g.name, unicodes: g === base(g.char) ? [g.char.codePointAt(0)!] : [], advance: advance(g.inst), parts: [part(g.inst, ox(g.inst))] })),
+    { name: ".notdef", unicodes: [], advance: advance(notdef), parts: parts(notdef, ox(notdef)) },
+    ...all.map((g) => ({ name: g.name, unicodes: g === base(g.char) ? [g.char.codePointAt(0)!] : [], advance: advance(g.inst), parts: parts(g.inst, ox(g.inst)) })),
     { name: "space", unicodes: [0x20], advance: S.wordGap - S.gap, parts: [] },
     { name: "uni00A0", unicodes: [0xa0], advance: S.wordGap - S.gap, parts: [] },
     nameLigature(),
@@ -196,7 +200,7 @@ function nameLigature(): FontGlyph {
     name: NAME_LIG,
     unicodes: [],
     advance: Math.round(v.width + 2 * SB),
-    parts: [...v.glyphs.map((g) => part(g.inst, g.x + x0)), { strokes: v.extras.map((e) => shift(e, x0)), bottom: 0, top: S.capHeight }],
+    parts: [...v.glyphs.flatMap((g) => parts(g.inst, g.x + x0)), { strokes: v.extras.map((e) => shift(e, x0)), bottom: 0, top: S.capHeight }],
   };
 }
 
@@ -263,7 +267,7 @@ function expectations(reg: Map<string, Glyph>, fNest: Glyph, sweep: string[]): P
       words[words.length - 1].push({ name: find(g.char, g.p), x: o - start });
     });
     const o0 = gs[0].x - ox(gs[0].inst);
-    return { text, features, words, parts: words.length === 1 ? gs.map((g) => part(g.inst, g.x - o0)) : null };
+    return { text, features, words, parts: words.length === 1 ? gs.flatMap((g) => parts(g.inst, g.x - o0)) : null };
   };
   const swept = sweep.map((text) => ({ ...entry(text, {}), parts: null })), lost = (e: Expect) => e.words.flat().some((g) => g.name.startsWith("?"));
   return { expect: [...TESTS.map(([text, features]) => entry(text, features)), ...swept.filter((e) => !lost(e))], dropped: swept.filter(lost).map((e) => e.text) };

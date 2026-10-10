@@ -237,3 +237,35 @@ test("Andockstellen der Kleinbuchstaben", () => {
   expect(kinds("n")).toEqual(["stem:left", "stem:right"]);
   expect(kinds("i")).toEqual(["stem:left"]);
 });
+
+test("f und t: Querstrich ab x = 0, Stamm bei 50, Querstrich ohne Verlängerung bis 150 (links 50, rechts 100)", () => {
+  for (const c of ["f", "t"]) {
+    const g = GLYPHS[c], p = defaults(g), [d] = g.docks(p, S) as { x0: number; x1: number }[];
+    expect([c, d.x0, d.x1]).toEqual([c, 0, 150]);
+    expect(g.draw(p, S).some((st) => st.start.x === 50 && st.start.y === 0)).toBe(true); // Stamm von der Grundlinie
+    expect((g.extend!(p, 200) as Params).cross).toBe(50);
+  }
+  expect(GLYPHS.f.trimTop!(defaults(GLYPHS.f), 130).hook).toBe(80); // Haken vom Stamm bei 50 gemessen
+});
+
+test("k: Arm schräg, auf der x-Höhe waagrecht beschnitten; außer dem Stamm keine Tinte über der x-Höhe", () => {
+  for (const p of variants(GLYPHS.k)) {
+    const st = GLYPHS.k.draw(p, S), arm = st.find((x) => x.top !== undefined)!;
+    expect(arm.top).toBe(S.xHeight);
+    expect(arm.segs.length).toBe(1); // eine Gerade, keine waagrechte Fahne
+    const cut = (x: Stroke) => inkPoints(x, S.stroke / 2, 1).filter((q) => q.y <= (x.top ?? Infinity) + 0.5);
+    const rest = st.filter((x) => Math.max(x.start.y, ...x.segs.map((g) => g.p.y)) < S.capHeight); // ohne Stamm
+    expect(Math.max(...rest.flatMap(cut).map((q) => q.y))).toBeLessThanOrEqual(S.xHeight + 0.5);
+    const edge = cut(arm).filter((q) => q.y >= S.xHeight - 2).map((q) => q.x);
+    expect(Math.max(...edge) - Math.min(...edge)).toBeGreaterThan(S.stroke / 2); // waagrechte Schnittkante, kein schräges Ende
+  }
+});
+
+test("ß wie ẞ: eckiges Dach auf 700, kein Bogen im oberen Viertel", () => {
+  for (const p of variants(GLYPHS["ß"])) {
+    const st = GLYPHS["ß"].draw(p, S);
+    expect(Math.max(...ink(st).map((q) => q.y))).toBeCloseTo(S.capHeight, 5);
+    const curvesUp = st.flatMap((x) => x.segs).filter((g) => g.k === "C" && Math.max(g.c1.y, g.c2.y, g.p.y) > 0.75 * S.capHeight);
+    expect(curvesUp).toEqual([]);
+  }
+});

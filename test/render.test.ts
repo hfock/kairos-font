@@ -104,3 +104,10 @@ test("eigene Oberkante (top): Tinte darüber wird dort abgeschnitten, auch bei U
   expect(sy.indexOf('data-i="0"')).toBeGreaterThan(sy.indexOf("</g>", sy.indexOf("kairos-zeile"))); // außerhalb des Zeilenbands
   expect(svgString(one({ ...y, draw: () => [stroke(0, -117, L(0, 287))] }), S, { ink: "#000", paper: null })).not.toContain("kairos-d"); // nichts ragt über
 });
+
+test("Strich mit eigener Oberkante (k-Arm): eigener Beschnitt nur für diesen Strich", () => {
+  const k = layoutLine("k", { style: S, interlock: 0.5, targetWidth: null, pins: { letters: {}, joins: {} } }).variants[0];
+  const svg = svgString(k, S, { ink: "#000", paper: null });
+  expect(svg).toContain('<clipPath id="kairos-h3000"><rect x="-1000" y="0" width="3000" height="300"/></clipPath>');
+  expect(svg).toMatch(/<g data-i="0" transform="translate\([^)]+\)"><path [^>]+\/><g clip-path="url\(#kairos-h3000\)"><path [^>]+\/><\/g><path /);
+});

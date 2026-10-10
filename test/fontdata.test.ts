@@ -72,3 +72,9 @@ test("Export hält keine Layouts fest: Spitze unter 1 GB", () => {
   const rss = Number(/(\d+)\s+maximum resident set size/.exec(r.stderr.toString())?.[1]);
   expect(rss).toBeLessThan(1e9);
 }, 60000);
+
+test("Strich mit eigener Oberkante: eigener Teil mit eigenem Band (k-Arm bis zur x-Höhe)", () => {
+  const k = byName.get("k")!;
+  expect(k.parts.map((q) => q.top)).toEqual([700, 300]);
+  expect(k.parts[1].strokes.length).toBe(1);
+});

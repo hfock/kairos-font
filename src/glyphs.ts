@@ -797,8 +797,8 @@ const aMid = (s: Style) => s.capHeight - s.stroke / 2; // Mittellinie oben auf d
 const dMid = (s: Style) => -DESC + s.stroke / 2; // Mittellinie unten auf der Unterlänge
 const stem = (x: number, y0: number, y1: number) => stroke(x, y0, L(x, y1));
 const TAIL = 60; // Radius des Schwanzes von g und j
-const STEM_X = 60; // Stamm von f und t; der Querstrich beginnt bei x = 0
-const CROSS = 120; // Querstrich von f und t endet ohne Verlängerung hier (beidseits 60 um den Stamm)
+const STEM_X = 50; // Stamm von f und t; der Querstrich beginnt bei x = 0
+const CROSS = 150; // Querstrich von f und t endet ohne Verlängerung hier (links 50, rechts 100 vom Stamm)
 
 /** Runder Bauch zwischen Grundlinie und x-Höhe: Halbkreise oben und unten wie beim O. */
 const ring = (w: number, s: Style) => oval(0, cBot(s), xMid(s), w);
@@ -925,9 +925,9 @@ const glyph_k: GlyphDef = {
   char: "k",
   params: { w: R(130, 160, 200) },
   draw(p, s) {
-    // Arm und Bein treffen sich auf halber x-Höhe am Stamm; der Arm biegt auf der x-Höhe in ein waagrechtes Ende (kein schräger Schnitt darüber)
-    const j = s.xHeight / 2, drop = capDrop(p.w, j, s);
-    return [stem(0, 0, s.capHeight), stroke(0, j, L(p.w - 40, xMid(s)), L(p.w, xMid(s))), stroke(0, j, L(p.w * (1 + drop / j), -drop))];
+    // Arm und Bein treffen sich auf halber x-Höhe am Stamm; der Arm ragt schräg knapp über die x-Höhe und wird dort waagrecht beschnitten (wie der K-Arm oben)
+    const j = s.xHeight / 2, drop = capDrop(p.w, j, s), e = past(0, j, 0.9 * p.w, s.xHeight, s);
+    return [stem(0, 0, s.capHeight), { ...stroke(0, j, L(e.x, e.y)), top: s.xHeight }, stroke(0, j, L(p.w * (1 + drop / j), -drop))];
   },
   docks: () => [{ kind: "stem", side: "left", x: 0 }],
 };
@@ -1077,15 +1077,7 @@ const glyph_z: GlyphDef = {
 const glyph_sz: GlyphDef = {
   char: "ß",
   params: { w: R(160, 200, 240) },
-  draw(p, s) {
-    // wie ẞ, aber oben rund: Stamm biegt in die Oberlänge, rechts ein Halbkreis hinab zur oberen Balkenlinie, dort spitz umkehren in das Segel
-    const t = aMid(s), b = cBot(s), y = s.barHigh, w1 = 0.8 * p.w, r = (t - y) / 2, k = KAPPA * r, a = 0.35 * p.w;
-    const rc = Math.min(r, w1 - r), kc = KAPPA * rc;
-    return [
-      stroke(0, 0, L(0, t - rc), C(0, t - rc + kc, rc - kc, t, rc, t), L(w1 - r, t), C(w1 - r + k, t, w1, t - r + k, w1, t - r),
-        C(w1, y + r - k, w1 - r + k, y, w1 - r, y), L(a, y), ...belly(a, y, p.w, b, 47), L(a, b)),
-    ];
-  },
+  draw: (p, s) => glyphSZ.draw({ h: 1, w: p.w }, s), // das ẞ in der schmaleren Breite: eckiges Dach auf der Oberlänge (= Versalhöhe), Segel darunter
   docks: () => [{ kind: "stem", side: "left", x: 0 }],
 };
 
