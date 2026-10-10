@@ -13,7 +13,7 @@ export type ExpectGlyph = { name: string; x: number }; // x: Ursprung relativ zu
 export type Expect = { text: string; features: Record<string, boolean>; words: ExpectGlyph[][]; parts: FontPart[] | null };
 export type FontData = {
   format: number;
-  info: { family: string; style: string; version: string; unitsPerEm: number; capHeight: number; ascender: number; descender: number; stroke: number };
+  info: { family: string; style: string; version: string; unitsPerEm: number; capHeight: number; xHeight: number; ascender: number; descender: number; stroke: number };
   glyphs: FontGlyph[];
   kerning: [string, string, number][];
   fea: string;
@@ -64,8 +64,8 @@ const best = (text: string) => {
   return laid.get(text)!;
 };
 const floor5 = (v: number) => Math.floor(v / 5) * 5;
-/** Regler, die erst die eigene rechte Verbindung ändert (Arm, Fuß, Bogenende): beim Setzen neben den linken Nachbarn galten noch die Startwerte. */
-const OWN_RIGHT = ["arm", "top", "foot", "wb", "term"];
+/** Regler, die erst die eigene rechte Verbindung ändert (Arm, Fuß, Bogenende, Querstrich, f-Haken): beim Setzen neben den linken Nachbarn galten noch die Startwerte. */
+const OWN_RIGHT = ["arm", "top", "foot", "wb", "term", "cross", "hook"];
 const placed = (g: { char: string; inst: Inst }) => {
   const d = defaults(GLYPHS[g.char]), p = { ...g.inst.p };
   for (const k of OWN_RIGHT) if (k in d) p[k] = d[k];
@@ -99,7 +99,8 @@ export function fontData(version: string): FontData {
 
   // Paare: was die Engine bei Verschränkung 0,5 aus zwei Zeichen macht
   type Join = { l: Glyph; r: Glyph; dx: number };
-  const joins: Join[] = [], rules = { nestX: new Map<string, Glyph>(), trimX: new Map<string, Glyph>(), under: [] as Join[], term: [] as Join[], skip: [] as string[][], trim: [] as [string, string, Glyph][] };
+  const joins: Join[] = [];
+  const rules: Rules = { nestX: new Map(), trimX: new Map(), under: [], term: [], cross: [], tail: [], hook: [], skip: [], trim: [] };
   const nests: { x: string; p: Params; r: Glyph; dx: number }[] = [];
   /** F mit gekürztem oberem Arm, auf 5 abgerundet; Glyphennamen ohne Minus. */
   const trimF = (p: Params) => {
@@ -107,6 +108,7 @@ export function fontData(version: string): FontData {
     return glyph("F", { ...p, top: t }, `F.nest.t${t < 0 ? "m" + -t : t}`);
   };
   const sweep: string[] = []; // Abgleich (Spec §7.1): alle Paare und F-Dreierfolgen werden Sollwerte
+  /** type: Verbindung (term, cross … statt share) oder „hook“ – keine Verbindung, aber der f-Haken ist vor dem Nachbarn gekürzt. */
   const record = (type: string, l: Glyph, r: Glyph, dx: number) => {
     const j = { l, r, dx };
     joins.push(j);
@@ -114,18 +116,22 @@ export function fontData(version: string): FontData {
     if (OWN_RIGHT.some((k) => k in dl && Math.abs(l.inst.p[k] - dl[k]) > 1e-6)) l.role.left = true;
     if (r !== reg.get(keyOf(r.char, defaults(GLYPHS[r.char])))) r.role.right = true;
     if (type === "underrun") rules.under.push(j);
-    if (type === "share") rules.term.push(j);
+    if (type === "term" || type === "cross" || type === "tail" || type === "hook") rules[type].push(j);
     return j;
   };
   for (const a of chars)
     for (const b of chars) {
       sweep.push(a + b); // auch ohne mögliche Verbindung: prüft die Unterschneidung der freien Seiten
-      if (joinsFor(base(a).inst, base(b).inst).length < 2) continue; // nur „keine“ möglich
+      if (joinsFor(base(a).inst, base(b).inst).length < 2 && !GLYPHS[a].trimTop) continue; // nur „keine“ möglich, und kein Haken zu kürzen
       const v = best(a + b), j = v.joins[0], [ga, gb] = v.glyphs;
-      if (j.type === "none") continue;
+      if (j.type === "none") {
+        const l = glyph(a, ga.p);
+        if (l !== base(a)) record("hook", l, glyph(b, gb.p), gb.x - ga.x); // f-Haken vor der Oberlänge gekürzt
+        continue;
+      }
       const r = glyph(b, gb.p);
       if (j.type === "nest") nests.push({ x: b, p: ga.p, r, dx: gb.x - ga.x }); // erst wenn das Regel-F feststeht
-      else record(j.type, glyph(a, ga.p), r, gb.x - ga.x);
+      else record(j.sub ?? j.type, glyph(a, ga.p), r, gb.x - ga.x);
     }
   // Verschachteln: das Regel-F hat den längsten oberen Arm; kürzt ihn schon der verschachtelte Buchstabe selbst (d), eigene Variante
   const top = Math.max(...nests.map((n) => n.p.top));
@@ -153,11 +159,11 @@ export function fontData(version: string): FontData {
         f = trimF(gF.p);
         rules.trim.push([xn, zn, f]);
       }
-      // X.short, oder X.short.foot / X.short.term, wenn X rechts weiter verbindet; ein zweites Verschachteln kann der Font nicht
-      const further = jXZ.type === "underrun" || jXZ.type === "share";
+      // X.short, oder X.short.foot / X.short.term, wenn X rechts weiter verbindet (Z mit Unterlänge darunter); ein zweites Verschachteln kann der Font nicht
+      const further = jXZ.type === "underrun" || jXZ.type === "share" || jXZ.type === "tail";
       const gx = further ? glyph(x, gX.p) : rules.nestX.get(x)!;
       record("nest", f, gx, gX.x - gF.x);
-      if (further) record(jXZ.type, gx, glyph(z, gZ.p), gZ.x - gX.x);
+      if (further) record(jXZ.sub ?? jXZ.type, gx, glyph(z, gZ.p), gZ.x - gX.x);
     }
 
   // Unterschneidung: freie Seiten gegeneinander mit dem Abstand „keine Verbindung“, verbundene Paare mit dem Engine-Abstand
@@ -184,7 +190,7 @@ export function fontData(version: string): FontData {
   const fea = features(reg, fNest, rules);
   return {
     format: FORMAT,
-    info: { family: "Neustift", style: "Regular", version, unitsPerEm: 1000, capHeight: S.capHeight, ascender: 760, descender: -240, stroke: S.stroke },
+    info: { family: "Neustift", style: "Regular", version, unitsPerEm: 1000, capHeight: S.capHeight, xHeight: S.xHeight, ascender: 760, descender: -240, stroke: S.stroke },
     glyphs,
     kerning: [...kern.values()].filter(([, , v]) => v !== 0),
     fea,
@@ -204,9 +210,11 @@ function nameLigature(): FontGlyph {
   };
 }
 
-type Rules = { nestX: Map<string, Glyph>; trimX: Map<string, Glyph>; under: { l: Glyph; r: Glyph }[]; term: { l: Glyph; r: Glyph }[]; skip: string[][]; trim: [string, string, Glyph][] };
+type Pair = { l: Glyph; r: Glyph };
+/** under: unterfahren, term: Bogenende, cross: Querstrich teilen, tail: Unterlänge nach links, hook: f-Haken gekürzt; skip/trim: F-Dreierfolgen. */
+type Rules = { nestX: Map<string, Glyph>; trimX: Map<string, Glyph>; under: Pair[]; term: Pair[]; cross: Pair[]; tail: Pair[]; hook: Pair[]; skip: string[][]; trim: [string, string, Glyph][] };
 
-/** Feature-Datei: liga (Name), dlig (HAF), calt (verschachteln, unterfahren, Bogenende) in dieser Reihenfolge. */
+/** Feature-Datei: liga (Name), dlig (HAF), calt (verschachteln, unterfahren, Bogenende, Querstrich, Unterlänge, f-Haken) in dieser Reihenfolge. */
 function features(reg: Map<string, Glyph>, fNest: Glyph, r: Rules): string {
   const word = [...reg.values()].filter((g) => /^[A-Za-zÄÖÜäöüẞß0-9]$/.test(g.char)).map((g) => g.name);
   const seq = (t: string) => [...t].map((c) => (c === " " ? "space" : glyphName(c)));
@@ -235,10 +243,18 @@ function features(reg: Map<string, Glyph>, fNest: Glyph, r: Rules): string {
   const input = (g: Glyph) => glyphName(g.char) + (g.inst.p.h < 1 ? ".short" : ""); // so heißt die Glyphe, wenn der Lookup sie sieht
   out.push(`lookup UNDERRUN_LEFT {\n${uniq(r.under.map((j) => `  sub ${input(j.l)}' ${glyphName(j.r.char)} by ${j.l.name};`)).join("\n")}\n} UNDERRUN_LEFT;`);
   out.push(`lookup UNDERRUN_RIGHT {\n${uniq(r.under.map((j) => `  sub ${j.l.name} ${glyphName(j.r.char)}' by ${j.r.name};`)).join("\n")}\n} UNDERRUN_RIGHT;`);
-  const termLeft = r.term.filter((j) => j.l.name !== input(j.l)); // T bleibt T: nur Unterschneidung
   const partner = (c: string) => `[${[...reg.values()].filter((g) => g.char === c && !g.role.right).map((g) => g.name).join(" ")}]`; // Grundglyphe samt links freier Varianten
-  out.push(`lookup TERM_LEFT {\n${uniq(termLeft.map((j) => `  sub ${input(j.l)}' ${partner(j.r.char)} by ${j.l.name};`)).join("\n")}\n} TERM_LEFT;`);
-  out.push(`feature calt {\n  lookup NEST_LEFT;\n  lookup NEST_RIGHT;\n  lookup UNDERRUN_LEFT;\n  lookup UNDERRUN_RIGHT;\n  lookup TERM_LEFT;\n} calt;`);
+  /** Linke Glyphe wird zur Variante vor dem Partner; bleibt sie, wie sie ist (T bleibt T), genügt die Unterschneidung. */
+  const left = (name: string, js: Pair[]) => {
+    const subs = js.filter((j) => j.l.name !== input(j.l)).map((j) => `  sub ${input(j.l)}' ${partner(j.r.char)} by ${j.l.name};`);
+    out.push(`lookup ${name} {\n${uniq(subs).join("\n")}\n} ${name};`);
+  };
+  left("TERM_LEFT", r.term);
+  left("CROSS_LEFT", r.cross);
+  out.push(`lookup TAIL_RIGHT {\n${uniq(r.tail.map((j) => `  sub ${j.l.name} ${glyphName(j.r.char)}' by ${j.r.name};`)).join("\n")}\n} TAIL_RIGHT;`);
+  left("TRIM_LEFT", r.hook);
+  const calt = ["NEST_LEFT", "NEST_RIGHT", "UNDERRUN_LEFT", "UNDERRUN_RIGHT", "TERM_LEFT", "CROSS_LEFT", "TAIL_RIGHT", "TRIM_LEFT"];
+  out.push(`feature calt {\n${calt.map((l) => `  lookup ${l};`).join("\n")}\n} calt;`);
   return out.join("\n") + "\n";
 }
 

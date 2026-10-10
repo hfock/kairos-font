@@ -45,11 +45,13 @@ export function joinsFor(l: Inst, r: Inst): Join[] {
   if (dock(l, "stem", "right") && stemL && !stemL.solo) out.push({ type: "share", sub: "stem" });
   if (dock(l, "leg", "right") && dock(r, "leg", "left")) out.push({ type: "share", sub: "leg" });
   if (dock(l, "cross") && l.def.extend && dock(r, "cross")) out.push({ type: "share", sub: "cross" });
-  if (dock(r, "tail") && r.def.tailTo) out.push({ type: "tail" });
+  if (dock(r, "tail") && r.def.tailTo && !l.def.desc) out.push({ type: "tail" }); // nie unter eine Unterlänge (p, j, Komma)
   return out;
 }
 
 export type Applied = { lp: Params; rp: Params; dx: number };
+/** Schwanzlängen in Stufen: der Font braucht je Stufe eine Glyphe, nicht je linkem Nachbarn. */
+export const TAIL_STEP = 40;
 
 /** Regel anwenden: neue Regler für links und rechts plus Verschiebung dx des rechten Buchstabens; lock = gepinnte Regler links. */
 export function apply(j: Join, l: Inst, rDef: GlyphDef, rp0: Params, s: Style, lock?: Params): Applied | null {
@@ -72,8 +74,9 @@ export function apply(j: Join, l: Inst, rDef: GlyphDef, rp0: Params, s: Style, l
     if (j.type === "none") dx = spacing(l, r, s, 0, lock);
     else if (j.type === "tail") {
       dx = spacing(l, r, s, 0, lock);
-      const x = l.prof.minX + s.stroke - dx; // Schwanz endet eine Strichstärke rechts der linken Tinte des Nachbarn
-      if (x >= dock(r, "tail")!.end) return null;
+      // Schwanz endet höchstens eine Strichstärke rechts der linken Tinte des Nachbarn, verlängert in Stufen von TAIL_STEP
+      const end = dock(r, "tail")!.end, x = end - Math.floor((end - (l.prof.minX + s.stroke - dx)) / TAIL_STEP) * TAIL_STEP;
+      if (x >= end) return null;
       rp = rDef.tailTo!(rp, x);
     } else if (j.sub === "cross") {
       dx = spacing(l, r, s, 0, lock);

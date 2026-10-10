@@ -82,7 +82,8 @@ def build() -> None:
     ufo = ufoLib2.Font()
     i = ufo.info
     i.familyName, i.styleName, i.postscriptFontName = info["family"], info["style"], "Neustift-Regular"
-    i.versionMajor, i.versionMinor = 0, 200  # 0.200 = Version 0.2 (UFO zählt Tausendstel)
+    major, minor = info["version"].split()[0].split(".")
+    i.versionMajor, i.versionMinor = int(major), int(minor) * 100  # 0.300 = Version 0.3 (UFO zählt Tausendstel)
     i.openTypeNameVersion = f"Version {info['version']}"  # Zeitstempel dahinter: jeder Build ist für macOS eine neue Fassung
     i.copyright = "Copyright (c) 2026, Hagen Aad Fock (https://font.fock.rocks)"
     i.openTypeNameDesigner, i.openTypeNameDesignerURL = "Hagen Aad Fock", "https://font.fock.rocks"
@@ -90,7 +91,7 @@ def build() -> None:
     i.openTypeNameLicenseURL = "https://openfontlicense.org"
     i.openTypeOS2Type = []  # installierbar: die OFL erlaubt Einbetten ohne Einschränkung
     i.openTypeNameUniqueID = f"Neustift-Regular {info['version']}"  # je Build neu: macOS erkennt die neue Fassung
-    i.unitsPerEm, i.capHeight, i.xHeight = info["unitsPerEm"], info["capHeight"], info["capHeight"]
+    i.unitsPerEm, i.capHeight, i.xHeight = info["unitsPerEm"], info["capHeight"], info["xHeight"]
     i.ascender, i.descender = info["ascender"], info["descender"]
     i.openTypeOS2TypoAscender, i.openTypeOS2TypoDescender, i.openTypeOS2TypoLineGap = info["ascender"], info["descender"], 0
     i.openTypeHheaAscender, i.openTypeHheaDescender, i.openTypeHheaLineGap = info["ascender"], info["descender"], 0

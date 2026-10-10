@@ -127,10 +127,17 @@ test("Querstrich teilen: Abstand wie ohne Verbindung, der linke Querstrich läuf
   expect(dock(l, "cross")!.y).toBe(dock(r, "cross")!.y);
 });
 
-test("Unterlänge nach links: der Schwanz endet eine Strichstärke rechts der linken Tinte des Nachbarn", () => {
+test("Unterlänge nach links: der Schwanz verlängert sich in Stufen von 40 bis höchstens eine Strichstärke rechts der linken Tinte des Nachbarn", () => {
   const { r, dx } = join({ type: "tail" }, "a", "g");
   expect(dx).toBeCloseTo(spacing(inst("a"), inst("g"), S));
-  expect(dx + dock(r, "tail")!.end).toBeCloseTo(inst("a").prof.minX + S.stroke);
+  const end = dx + dock(r, "tail")!.end, limit = inst("a").prof.minX + S.stroke;
+  expect(end).toBeGreaterThanOrEqual(limit - 1e-9); // nie länger als bis dorthin
+  expect(end - limit).toBeLessThan(40);
+  expect((GLYPHS.g.params.tail.def - r.p.tail) % 40).toBe(0); // Font: eine Glyphe je Stufe, nicht je Nachbar
+  for (const [a, b] of [["e", "j"], ["n", "y"], ["T", "g"]]) {
+    const t = join({ type: "tail" }, a, b).r.p.tail;
+    expect([a + b, (GLYPHS[b].params.tail.def - t) % 40]).toEqual([a + b, 0]);
+  }
   expect(collides(inst("a"), 0, r, dx, S)).toBe(false); // unter dem a, nicht hinein
 });
 

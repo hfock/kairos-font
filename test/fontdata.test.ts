@@ -18,9 +18,29 @@ test("jedes Zeichen hat eine Grundglyphe mit genau seinem Codepunkt, HAF liegt a
 test("Feature-Datei nennt nur vorhandene Glyphen und enthält liga, dlig und calt", () => {
   const names = new Set(byName.keys()), body = data.fea.replace(/^languagesystem.*$/gm, "").replace(/@\w+/g, ""); // Klassennamen zählen nicht
   const used = body.match(/[A-Za-z_][A-Za-z0-9_.]*(?=['\s;\]])/g)!.filter((w) => !["sub", "by", "ignore", "lookup", "feature", "calt", "liga", "dlig"].includes(w));
-  const unknown = used.filter((w) => !names.has(w) && !/^[A-Z_]+_LIG$|^NEST_|^UNDERRUN_|^TERM_/.test(w));
+  const unknown = used.filter((w) => !names.has(w) && !/^[A-Z_]+_LIG$|^(NEST|UNDERRUN|TERM|CROSS|TAIL|TRIM)_/.test(w));
   expect([...new Set(unknown)]).toEqual([]);
   for (const f of ["feature liga", "feature dlig", "feature calt"]) expect(data.fea).toContain(f);
+  expect(data.fea).toContain("lookup CROSS_LEFT");
+  expect(data.fea).toContain("lookup TAIL_RIGHT");
+  expect(data.fea).toContain("lookup TRIM_LEFT");
+  const calt = /feature calt \{([^}]*)\}/.exec(data.fea)![1].match(/lookup \w+/g);
+  expect(calt).toEqual(["NEST_LEFT", "NEST_RIGHT", "UNDERRUN_LEFT", "UNDERRUN_RIGHT", "TERM_LEFT", "CROSS_LEFT", "TAIL_RIGHT", "TRIM_LEFT"].map((l) => `lookup ${l}`));
+});
+
+test("Kleinbuchstaben verschränkt: Querstrich teilen, Unterlänge nach links, f-Haken kürzen", () => {
+  const words = (t: string) => data.expect.find((e) => e.text === t)!.words.map((w) => w.map((g) => g.name).join(" "));
+  expect(words("Stift")[0]).toMatch(/^S t i f\.cross t$/);
+  expect(words("Kaffee")[0]).toMatch(/^K a f\.cross f e e$/);
+  expect(words("Hagen")[0]).toMatch(/^H a g\.tail(\.\d+)? e n$/);
+  expect(words("Pflicht")[0]).toBe("P f l i c.term h t"); // das l steht im Buchstabenabstand zum Querstrich: der Haken passt davor
+  expect(words("fT")[0]).toMatch(/^f\.trim(\.\d+)? T$/); // der T-Arm reicht bis an den Haken: gekürzt
+  expect(data.fea).toMatch(/sub f' \[t[^\]]*\] by f\.cross;/);
+  expect(data.fea).toMatch(/sub a g' by g\.tail(\.\d+)?;/);
+  expect(data.fea).toMatch(/sub f' \[T[^\]]*\] by f\.trim(\.\d+)?;/);
+  // Schwanzlängen in Stufen: wenige Varianten je Zeichen statt einer je linkem Nachbarn
+  for (const c of "gjy") expect([c, data.glyphs.filter((g) => g.name.startsWith(c + ".tail")).length <= 10]).toEqual([c, true]);
+  expect(data.info.xHeight).toBe(300);
 });
 
 test("Sollwerte: FLÄCHE mit gekürztem F-Arm, Namens-Ligatur, Monogramm nur als eigenes Wort", () => {
