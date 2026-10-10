@@ -44,3 +44,12 @@ test("cleanState: gültiger Stand bleibt, kaputter Speicher führt zum Standard 
   expect(cleanState({ ...valid, style: { ...FLAECHE_1902, capHeight: 1e9 } }, KNOWN)).toBeNull();
   for (const bad of [null, 5, "x", [], {}, { text: "DIE" }]) expect(cleanState(bad, KNOWN)).toBeNull();
 });
+
+test("cleanState: Stand von vor M4 ohne x-Höhe bleibt gültig und bekommt den Grundwert", () => {
+  const { xHeight: _, ...old } = FLAECHE_1902;
+  const st = cleanState({ ...valid, style: old }, KNOWN);
+  expect(st).not.toBeNull();
+  expect(st!.style.xHeight).toBe(300);
+  expect(st!.text).toBe(valid.text);
+  expect(cleanState({ ...valid, style: { ...old, xHeight: null } }, KNOWN)).toBeNull(); // null würde den Grundwert überschreiben
+});

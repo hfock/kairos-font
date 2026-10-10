@@ -72,7 +72,7 @@ export function cleanState(raw: unknown, known: ReadonlySet<string>): State | nu
   const base = FLAECHE_1902 as unknown as Record<string, unknown>;
   const styleOk =
     isObj(st) &&
-    Object.keys(base).every((k) => (k === "id" ? typeof st.id === "string" : k in STYLE_RANGES ? inStyleRange(k, st[k]) : st[k] === base[k]));
+    Object.keys(base).every((k) => (k === "id" ? typeof st.id === "string" : k in STYLE_RANGES ? inStyleRange(k, st[k]) : (st[k] === undefined || st[k] === base[k]))); // fehlende feste Werte (ältere Stände, z. B. ohne xHeight) gelten als Grundwert
   const ok =
     styleOk &&
     isColor(raw.ink) &&
@@ -85,5 +85,5 @@ export function cleanState(raw: unknown, known: ReadonlySet<string>): State | nu
     (raw.selected === null || Number.isInteger(raw.selected)) &&
     typeof raw.showOverlay === "boolean" &&
     typeof raw.transparent === "boolean";
-  return ok ? { ...(raw as State), text: raw.text.normalize("NFC") } : null;
+  return ok ? { ...(raw as State), style: { ...FLAECHE_1902, ...(st as Partial<Style>) }, text: raw.text.normalize("NFC") } : null;
 }
