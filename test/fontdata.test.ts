@@ -47,3 +47,10 @@ test("Unterschneidung: verbundene Paare stehen wie in der Engine, freie Paare mi
   expect(off.filter(([, , , d]) => Math.abs(d) > 1)).toEqual([]); // in jedem Sollwort, auch hinter Varianten (T E.foot, T.short A)
   expect(k.get("H I")).toBeUndefined(); // zwei Stämme: Seitenabstände reichen, keine Unterschneidung nötig
 });
+
+test("Export hält keine Layouts fest: Spitze unter 1 GB", () => {
+  const r = Bun.spawnSync(["/usr/bin/time", "-l", "bun", "tools/export-font.ts"], { stderr: "pipe", stdout: "pipe" });
+  expect(r.success).toBe(true);
+  const rss = Number(/(\d+)\s+maximum resident set size/.exec(r.stderr.toString())?.[1]);
+  expect(rss).toBeLessThan(1e9);
+}, 60000);

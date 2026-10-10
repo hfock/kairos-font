@@ -50,9 +50,14 @@ const part = (i: Inst, dx: number): FontPart => ({
 
 type Glyph = { name: string; char: string; inst: Inst; role: { left: boolean; right: boolean } }; // left: steht links in einer Verbindung (rechte Seite verbunden); right: steht rechts (linke Seite verbunden)
 const opts = { style: S, interlock: 0.5, targetWidth: null, pins: { letters: {}, joins: {} } };
-const laid = new Map<string, Layout>(); // jede Folge nur einmal setzen: die Sollwerte brauchen die Paare und Dreierfolgen noch einmal
+/** Gesetzte Folge, schlank: nur Regler statt Instanzen (Tinte, Profil) – sonst hält der Export Gigabytes fest. */
+type Laid = Pick<Layout, "joins"> & { glyphs: { index: number; char: string; x: number; p: Params }[] };
+const laid = new Map<string, Laid>(); // jede Folge nur einmal setzen: die Sollwerte brauchen die Paare und Dreierfolgen noch einmal
 const best = (text: string) => {
-  if (!laid.has(text)) laid.set(text, layoutLine(text, opts).variants[0]);
+  if (!laid.has(text)) {
+    const { joins, glyphs } = layoutLine(text, opts).variants[0];
+    laid.set(text, { joins, glyphs: glyphs.map(({ index, char, x, inst }) => ({ index, char, x, p: inst.p })) });
+  }
   return laid.get(text)!;
 };
 const floor5 = (v: number) => Math.floor(v / 5) * 5;
@@ -109,7 +114,7 @@ export function fontData(version: string): FontData {
       if (joinsFor(base(a).inst, base(b).inst).length < 2) continue; // nur „keine“ möglich
       const v = best(a + b), j = v.joins[0], [ga, gb] = v.glyphs;
       if (j.type === "none") continue;
-      const l = glyph(a, ga.inst.p), r = glyph(b, gb.inst.p);
+      const l = glyph(a, ga.p), r = glyph(b, gb.p);
       record(j.type, l, r, gb.x - ga.x);
       if (j.type === "nest") (fNest = l), rules.nestX.set(b, r);
     }
@@ -125,16 +130,16 @@ export function fontData(version: string): FontData {
         continue;
       }
       let f = fNest!;
-      if (gF.inst.p.top < fNest!.inst.p.top - 0.5) {
-        const t = floor5(gF.inst.p.top);
-        f = glyph("F", { ...gF.inst.p, top: t }, `F.nest.t${t < 0 ? "m" + -t : t}`); // Glyphennamen ohne Minus
+      if (gF.p.top < fNest!.inst.p.top - 0.5) {
+        const t = floor5(gF.p.top);
+        f = glyph("F", { ...gF.p, top: t }, `F.nest.t${t < 0 ? "m" + -t : t}`); // Glyphennamen ohne Minus
         rules.trim.push([xn, zn, f]);
       }
       // X.short, oder X.short.foot / X.short.term, wenn X rechts weiter verbindet; ein zweites Verschachteln kann der Font nicht
       const further = jXZ.type === "underrun" || jXZ.type === "share";
-      const gx = further ? glyph(x, gX.inst.p) : rules.nestX.get(x)!;
+      const gx = further ? glyph(x, gX.p) : rules.nestX.get(x)!;
       record("nest", f, gx, gX.x - gF.x);
-      if (further) record(jXZ.type, gx, glyph(z, gZ.inst.p), gZ.x - gX.x);
+      if (further) record(jXZ.type, gx, glyph(z, gZ.p), gZ.x - gX.x);
     }
 
   // Unterschneidung: freie Seiten gegeneinander mit dem Abstand „keine Verbindung“, verbundene Paare mit dem Engine-Abstand
@@ -235,15 +240,15 @@ function expectations(reg: Map<string, Glyph>, fNest: Glyph, sweep: string[]): E
     const upper = text.toUpperCase();
     if (upper === hagen.text) return { text, features, words: [[{ name: NAME_LIG, x: 0 }]], parts: null };
     if (upper === "HAF" && features.dlig) return { text, features, words: [[{ name: "H_A_F", x: 0 }]], parts: null };
-    const v: Layout = best(text), words: ExpectGlyph[][] = [];
+    const gs = best(text).glyphs.map((g) => ({ ...g, inst: instance(GLYPHS[g.char], g.p, S) })), words: ExpectGlyph[][] = [];
     let start = 0;
-    v.glyphs.forEach((g, i) => {
+    gs.forEach((g, i) => {
       const o = g.x - ox(g.inst);
-      if (i === 0 || g.index !== v.glyphs[i - 1].index + 1) words.push([]), (start = o);
-      words[words.length - 1].push({ name: find(g.char, g.inst.p), x: o - start });
+      if (i === 0 || g.index !== gs[i - 1].index + 1) words.push([]), (start = o);
+      words[words.length - 1].push({ name: find(g.char, g.p), x: o - start });
     });
-    const o0 = v.glyphs[0].x - ox(v.glyphs[0].inst);
-    return { text, features, words, parts: words.length === 1 ? v.glyphs.map((g) => part(g.inst, g.x - o0)) : null };
+    const o0 = gs[0].x - ox(gs[0].inst);
+    return { text, features, words, parts: words.length === 1 ? gs.map((g) => part(g.inst, g.x - o0)) : null };
   };
   const swept = sweep.map((text) => ({ ...entry(text, {}), parts: null })).filter((e) => !e.words.flat().some((g) => g.name.startsWith("?")));
   return [...TESTS.map(([text, features]) => entry(text, features)), ...swept];
