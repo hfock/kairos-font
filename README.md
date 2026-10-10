@@ -44,12 +44,14 @@ Live: https://font.fock.rocks (Werkstatt) und https://font.fock.rocks/font (Font
 
 - Installieren: `dist/Neustift-Regular.otf` per Doppelklick in die Schriftsammlung. Für eine neue Fassung die alte Fassung dort vorher entfernen (auch unter dem früheren Namen „KAIROS Font“), sonst zeigt macOS weiter die alte aus dem Zwischenspeicher.
 - Verbindungen (`calt`) und der Schriftzug „HAGEN AAD FOCK“ (`liga`) sind immer an. Zeigt ein Programm keine Verbindungen, die kontextbedingten Varianten in seinen Typografie-Einstellungen einschalten.
+- Kleinbuchstaben a–z, ä, ö, ü, ß (x-Höhe 300, Oberlängen auf Versalhöhe 700) verschränken sich wie die Versalien: f und t teilen den Querstrich („Stift“), c greift in das h („ich“), g, j und y reichen unter den vorigen Buchstaben („Hagen“), das a rückt unter den T-Arm („Tafel“).
 - Monogramm HAF: „HAF“ als eigenes Wort mit bedingten Ligaturen (`dlig`, in macOS „Seltene Ligaturen“) oder das Zeichen U+E000.
 
 ## Bekannte Grenzen
 
 - Wortabstand: der Font setzt Wörter nach den Glyphenkästen (Leerzeichen fest), die App nach der Tinte, aber nie enger als der Font. Wo die Tinte mehr Luft verlangt (etwa „DI“ über eine Wortgrenze), steht der Font bis zu ~20 Einheiten enger.
 - Verbindungen: der Font entscheidet von links nach rechts, die Engine sucht die beste Lösung; selten weicht das ab (etwa „VARIATIONSKOEFFIZIENT“). Zweimal verschachteln (FF vor manchen Satzzeichen) kann der Font nicht.
+- Kleinbuchstaben: auch hier nur eine Verschachtelung (FF vor einem Buchstaben), und einige seltene Ketten setzt der Font anders als die App (etwa Unterlängen nach zwei Zeichen Kontext).
 
 ## Lizenz
 
