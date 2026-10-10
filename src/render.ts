@@ -1,5 +1,6 @@
 import { pathData } from "./geom";
 import type { Layout } from "./engine";
+import { cutTop } from "./glyphs";
 import type { Style } from "./style";
 
 export type Overlay = { href: string; x: number; y: number; w: number; h: number; opacity: number };
@@ -29,7 +30,7 @@ export function svgString(l: Layout, s: Style, o: RenderOpts): string {
     // Klickflächen liegen unter aller Tinte: ein Klick auf einen Strich trifft immer dessen eigenen Buchstaben
     out.push(`<g class="hits" ${flip}>`);
     for (const g of l.glyphs) {
-      const { minX, maxX } = g.inst.prof, top = r1(H * (g.inst.p.h ?? 1)), sel = g.index === o.selected;
+      const { minX, maxX } = g.inst.prof, top = r1(cutTop(g.inst.def, g.inst.p, s)), sel = g.index === o.selected;
       out.push(`<g data-i="${g.index}" transform="translate(${r1(g.x)} 0)">`);
       out.push(`<rect class="${sel ? "sel" : "hit"}" x="${r1(minX)}" y="0" width="${r1(maxX - minX)}" height="${top}" fill="${sel ? "#c9a227" : "transparent"}" fill-opacity="${sel ? 0.18 : 0}" stroke="none" pointer-events="all"/>`);
       if (o.pinned?.includes(g.index)) out.push(`<circle class="pin" cx="${r1((minX + maxX) / 2)}" cy="${-m / 2}" r="8" fill="#b03a2e" stroke="none"/>`);
@@ -47,22 +48,22 @@ export function svgString(l: Layout, s: Style, o: RenderOpts): string {
   out.push(`<g id="ink" ${flip} fill="none" stroke="${o.ink}" stroke-width="${s.stroke}" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4">`);
   // Zeilenband in Schriftkoordinaten: schräge Füße und Spitzen enden waagrecht an Grund- und Oberlinie
   out.push(`<clipPath id="kairos-zeile"><rect x="-10000000" y="0" width="20000000" height="${H}"/></clipPath><g clip-path="url(#kairos-zeile)">`);
-  const clips = new Set<number>(), glyph = (g: Layout["glyphs"][number], attr = "") =>
-    `<g data-i="${g.index}" transform="translate(${r1(g.x)} 0)"${attr}>${g.inst.strokes.map((st) => `<path d="${pathData(st)}"/>`).join("")}</g>`;
-  for (const g of l.glyphs) {
-    if (g.inst.def.desc) continue; // Zeichen mit Unterlänge liegen außerhalb des Bands (unten)
-    // kürzere Buchstaben zusätzlich an der eigenen Oberkante abschneiden (schräge Enden V X Y, Gehrungsspitzen M N);
-    // die Kennung hängt nur an der Höhe, so stören sich auch mehrere eingebettete SVGs nicht
-    const top = r1(H * (g.inst.p.h ?? 1)), id = Math.round(top * 10), clip = top < H && g.inst.ink.some((q) => q.y > top + 0.5); // Satzzeichen ohne Höhenregler: volle Höhe
+  const clips = new Set<string>(), glyph = (g: Layout["glyphs"][number]) => {
+    // an der eigenen Oberkante abschneiden (schräge Enden V X Y v w x y, Gehrungsspitzen M N), Zeichen mit Unterlänge
+    // zwischen −desc und Oberkante; die Kennung hängt nur an den Höhen, so stören sich auch mehrere eingebettete SVGs nicht
+    const top = r1(cutTop(g.inst.def, g.inst.p, s)), d = g.inst.def.desc ?? 0; // Satzzeichen ohne Höhenregler: volle Höhe
+    const id = d ? `kairos-d${Math.round(d * 10)}-${Math.round(top * 10)}` : `kairos-h${Math.round(top * 10)}`;
+    const clip = (d || top < H) && g.inst.ink.some((q) => q.y > top + 0.5);
     if (clip && !clips.has(id)) {
       clips.add(id);
-      out.push(`<clipPath id="kairos-h${id}"><rect x="-1000" y="0" width="3000" height="${top}"/></clipPath>`);
+      out.push(`<clipPath id="${id}"><rect x="-1000" y="${-d}" width="3000" height="${r1(top + d)}"/></clipPath>`);
     }
-    out.push(glyph(g, clip ? ` clip-path="url(#kairos-h${id})"` : ""));
-  }
+    out.push(`<g data-i="${g.index}" transform="translate(${r1(g.x)} 0)"${clip ? ` clip-path="url(#${id})"` : ""}>${g.inst.strokes.map((st) => `<path d="${pathData(st)}"/>`).join("")}</g>`);
+  };
+  for (const g of l.glyphs) if (!g.inst.def.desc) glyph(g); // Zeichen mit Unterlänge liegen außerhalb des Bands (unten)
   for (const e of l.extras) out.push(`<path d="${pathData(e)}"/>`);
   out.push(`</g>`);
-  for (const g of l.glyphs) if (g.inst.def.desc) out.push(glyph(g)); // Komma, tiefe Anführungszeichen: ohne Beschnitt
+  for (const g of l.glyphs) if (g.inst.def.desc) glyph(g); // Komma, tiefe Anführungszeichen ohne Beschnitt; y bis zur x-Höhe
   out.push(`</g></svg>`);
   return out.join("");
 }

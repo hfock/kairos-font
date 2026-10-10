@@ -1,6 +1,9 @@
 import { expect, test } from "bun:test";
-import { layoutLine } from "../src/engine";
+import { layoutLine, type Layout } from "../src/engine";
+import { L, stroke } from "../src/geom";
+import type { GlyphDef } from "../src/glyphs";
 import { svgString } from "../src/render";
+import { instance } from "../src/rules";
 import { FLAECHE_1902 as S } from "../src/style";
 
 const v = layoutLine("DIE FLÄCHE", { style: S, interlock: 0.5, targetWidth: null, pins: { letters: {}, joins: {} } }).variants[0];
@@ -80,4 +83,24 @@ test("Zeilenband reicht auch für sehr lange Zeilen", () => {
   const [, bx, bw] = svgString(long, S, { ink: "#000", paper: null }).match(/id="kairos-zeile"><rect x="([-\d.]+)" y="0" width="([\d.]+)"/)!.map(Number);
   expect(bx).toBeLessThanOrEqual(long.minX);
   expect(bx + bw).toBeGreaterThanOrEqual(long.maxX);
+});
+
+/** Layout von Hand: eine Glyphe bei x = 0. */
+function one(def: GlyphDef): Layout {
+  const inst = instance(def, {}, S);
+  return { glyphs: [{ index: 0, char: def.char, inst, x: 0 }], extras: [], joins: {}, minX: inst.prof.minX, maxX: inst.prof.maxX, width: inst.prof.maxX - inst.prof.minX, score: 0 };
+}
+
+test("eigene Oberkante (top): Tinte darüber wird dort abgeschnitten, auch bei Unterlänge zwischen −desc und top", () => {
+  const v: GlyphDef = { char: "v", params: {}, top: (s) => s.xHeight, draw: () => [stroke(0, 0, L(0, 400))], docks: () => [] };
+  const svg = svgString(one(v), S, { ink: "#000", paper: null });
+  expect(svg).toContain('<clipPath id="kairos-h3000"><rect x="-1000" y="0" width="3000" height="300"/></clipPath>');
+  expect(svg).toMatch(/<g data-i="0" transform="translate\(0 0\)" clip-path="url\(#kairos-h3000\)">/);
+
+  const y: GlyphDef = { ...v, char: "y", desc: 130, draw: () => [stroke(0, -117, L(0, 400))] };
+  const sy = svgString(one(y), S, { ink: "#000", paper: null });
+  expect(sy).toContain('<clipPath id="kairos-d1300-3000"><rect x="-1000" y="-130" width="3000" height="430"/></clipPath>');
+  expect(sy).toMatch(/<g data-i="0" transform="translate\(0 0\)" clip-path="url\(#kairos-d1300-3000\)">/);
+  expect(sy.indexOf('data-i="0"')).toBeGreaterThan(sy.indexOf("</g>", sy.indexOf("kairos-zeile"))); // außerhalb des Zeilenbands
+  expect(svgString(one({ ...y, draw: () => [stroke(0, -117, L(0, 287))] }), S, { ink: "#000", paper: null })).not.toContain("kairos-d"); // nichts ragt über
 });

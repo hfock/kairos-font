@@ -77,13 +77,13 @@ export const collides = (a: Inst, ax: number, b: Inst, bx: number, s: Style) => 
 /** Oberen Arm (F) vor dem Buchstaben o kürzen, sodass armGap Luft bleibt. */
 export function trimTop(f: Inst, fx: number, o: Inst, ox: number, s: Style): Inst {
   if (!f.def.trimTop) return f;
-  const top = s.capHeight * f.p.h;
+  const top = s.capHeight * (f.p.h ?? 1); // Kleinbuchstaben haben keinen Höhenregler
   let obstacle = Infinity;
   for (let i = Math.floor((top - s.stroke) / BIN); i <= Math.floor(top / BIN) && i < o.prof.left.length; i++)
     if (o.prof.left[i] + ox < obstacle) obstacle = o.prof.left[i] + ox;
   if (obstacle === Infinity) return f;
   const p = f.def.trimTop(f.p, obstacle - s.armGap - fx);
-  return p.top === f.p.top ? f : instance(f.def, p, s);
+  return Object.entries(p).every(([k, v]) => v === f.p[k]) ? f : instance(f.def, p, s); // Regler je Buchstabe verschieden (F: top, f: hook)
 }
 
 /** Verbindungsstück zwischen zwei Querbalken auf gleicher Linie (globale Koordinaten), wenn die Lücke zwischen den Tinten höchstens den Buchstabenabstand misst (Spec 5.4); sonst null. */

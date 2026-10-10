@@ -4,6 +4,7 @@ export interface Style {
   stroke: number; // Strichstärke
   barHigh: number; // obere Balkenlinie (Mittellinie)
   barLow: number; // untere Balkenlinie (Mittellinie)
+  xHeight: number; // Höhe der Kleinbuchstaben ohne Ober- und Unterlänge (Tinte)
   gap: number; // Buchstabenabstand = kleinste waagrechte Lichtweite
   wordGap: number; // Wortabstand
   clearance: number; // Lichtweite beim Verschachteln und Unterfahren
@@ -22,6 +23,7 @@ export const FLAECHE_1902: Style = {
   stroke: 26,
   barHigh: 546,
   barLow: 154,
+  xHeight: 300,
   gap: 56,
   wordGap: 136,
   clearance: 36,

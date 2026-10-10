@@ -2,7 +2,7 @@
 import hagen from "../presets/hagen-aad-fock.json";
 import { layoutLine, type Layout, type Pins } from "./engine";
 import { shift, type Stroke } from "./geom";
-import { GLYPHS, PLACEHOLDER, defaults, type Params } from "./glyphs";
+import { GLYPHS, PLACEHOLDER, cutTop, defaults, type Params } from "./glyphs";
 import { instance, joinsFor, spacing, type Inst } from "./rules";
 import { FLAECHE_1902 as S } from "./style";
 
@@ -45,7 +45,7 @@ const kernFor = (l: Inst, r: Inst, dx: number) => Math.round(dx - ox(r) + ox(l) 
 const part = (i: Inst, dx: number): FontPart => ({
   strokes: i.strokes.map((st) => shift(st, dx)),
   bottom: -(i.def.desc ?? 0),
-  top: i.def.desc ? S.capHeight : S.capHeight * (i.p.h ?? 1),
+  top: i.def.desc && !i.def.top ? S.capHeight : cutTop(i.def, i.p, S),
 });
 
 type Glyph = { name: string; char: string; inst: Inst; role: { left: boolean; right: boolean } }; // left: steht links in einer Verbindung (rechte Seite verbunden); right: steht rechts (linke Seite verbunden)

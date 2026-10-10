@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import { inkPoints, minDist, type Stroke } from "../src/geom";
-import { GLYPHS, PLACEHOLDER, defaults, inRange, type GlyphDef, type Params } from "../src/glyphs";
+import { GLYPHS, PLACEHOLDER, cutTop, defaults, inRange, type GlyphDef, type Params } from "../src/glyphs";
 import { barLink, instance } from "../src/rules";
 import { FLAECHE_1902 as S } from "../src/style";
 
@@ -26,6 +26,12 @@ test("alle Versalien, Umlaute und ẞ sind entworfen", () => {
 
 test("Ziffern, Satz- und Plakat-Zeichen und das Monogramm sind entworfen", () => {
   expect([...DIGITS, ...MARKS, HAF].filter((c) => !GLYPHS[c])).toEqual([]);
+});
+
+test("cutTop: eigene Oberkante vor Höhenregler, sonst Versalhöhe × h, ohne h volle Höhe", () => {
+  expect(cutTop(GLYPHS.V, { ...defaults(GLYPHS.V), h: 0.7 }, S)).toBeCloseTo(490);
+  expect(cutTop(GLYPHS[","], {}, S)).toBe(S.capHeight);
+  expect(cutTop({ ...GLYPHS.V, top: (s) => s.xHeight }, { ...defaults(GLYPHS.V), h: 0.7 }, S)).toBe(300);
 });
 
 test("Tinte bleibt endlich und im Buchstabenfeld (Höhe, x ≥ linker Bezug)", () => {

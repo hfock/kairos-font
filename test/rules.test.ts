@@ -1,4 +1,5 @@
 import { expect, test } from "bun:test";
+import { L, stroke } from "../src/geom";
 import { GLYPHS, defaults } from "../src/glyphs";
 import { apply, barLink, collides, instance, joinsFor, lightGap, trimTop, type Inst, type Join } from "../src/rules";
 import { FLAECHE_1902 as S } from "../src/style";
@@ -74,6 +75,12 @@ test("trimTop: oberer F-Arm endet armGap vor dem Nachbarn", () => {
   const t = trimTop(f, 0, i, 400, S);
   expect(t.p.w + t.p.top).toBeCloseTo(400 - S.stroke / 2 - S.armGap, 0);
   expect(trimTop(f, 0, i, 2000, S)).toBe(f);
+});
+
+test("trimTop auch ohne Höhenregler (Kleinbuchstaben): Arm auf Versalhöhe endet armGap vor dem Nachbarn", () => {
+  const top = S.capHeight - S.stroke / 2;
+  const f = instance({ char: "f", params: { arm: { min: 0, def: 200, max: 200 } }, draw: (p) => [stroke(p.arm, top, L(0, top), L(0, 0))], docks: () => [], trimTop: (p, end) => ({ ...p, arm: Math.min(p.arm, end) }) }, { arm: 200 }, S);
+  expect(trimTop(f, 0, inst("I"), 200, S).p.arm).toBeCloseTo(200 - S.stroke / 2 - S.armGap, 0);
 });
 
 test("joinsFor bei den übrigen Versalien: TH teilt den Arm, RA die Füße, ZA unterfährt, UN den Stamm", () => {

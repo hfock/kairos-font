@@ -9,7 +9,9 @@ export type Dock =
   | { kind: "terminal"; topEnd: number; y: number } // offenes Strichende auf Höhe y (C/G-Bogen unten, T-Arm); der Nachbarstamm kommt auf topEnd + armGap + Strich/2
   | { kind: "stem"; side: "left" | "right"; x: number; solo?: boolean } // senkrechter Stamm
   | { kind: "leg"; side: "left" | "right"; footX: number } // schräges Bein, Fuß bei footX
-  | { kind: "bar"; y: number; x0: number; x1: number; left: boolean; right: boolean }; // Querbalken
+  | { kind: "bar"; y: number; x0: number; x1: number; left: boolean; right: boolean } // Querbalken
+  | { kind: "cross"; y: number; x0: number; x1: number } // Querstrich (f, t) auf Höhe y, verlängerbar nach rechts
+  | { kind: "tail"; end: number }; // Unterlänge (g, j, y), endet bei x = end, verlängerbar nach links
 
 export interface GlyphDef {
   char: string;
@@ -23,7 +25,13 @@ export interface GlyphDef {
   close?(p: Params, x: number): Params; // Bogenende bis x (Strich teilen)
   lift?(p: Params, y: number, s: Style): Params; // linkes Bein: tiefste Tinte bei y (Unterfahren)
   trimTop?(p: Params, end: number): Params; // oberen Arm höchstens bis end
+  extend?(p: Params, x: number): Params; // Querstrich bis x (f, t)
+  tailTo?(p: Params, x: number): Params; // Schwanz der Unterlänge bis x nach links (g, j, y)
+  top?(s: Style): number; // eigene Beschnitt-Oberkante (v, w, x, y: x-Höhe)
 }
+
+/** Oberkante, an der Renderer und Font die Tinte abschneiden: eigene Oberkante, sonst Versalhöhe × Höhenregler. */
+export const cutTop = (def: GlyphDef, p: Params, s: Style) => def.top?.(s) ?? s.capHeight * (p.h ?? 1);
 
 const R = (min: number, def: number, max: number): Range => ({ min, def, max });
 const KAPPA = 0.5523; // Viertelkreis als kubischer Bogen
