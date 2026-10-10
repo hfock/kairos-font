@@ -20,10 +20,18 @@ export function dock<K extends Dock["kind"]>(i: Inst, kind: K, side?: "left" | "
 }
 
 /** Abstand für „keine Verbindung“: kleinste waagrechte Lichtweite = Buchstabenabstand (+ Seitenkorrektur).
- *  Ein loser oberer Strich (f-Haken) zählt nur so kurz, wie trimTop ihn kürzen darf – gepinnte Regler (lock) bleiben; die Engine kürzt ihn danach vor dem Nachbarn. */
+ *  Ein loser oberer Strich (f-Haken) zählt nur so kurz, wie trimTop ihn kürzen darf – gepinnte Regler (lock) bleiben; die Engine kürzt ihn danach
+ *  vor dem Nachbarn. Reicht das Kürzen nicht (Bogen des S unter dem Hakenband), zählt der ganze Haken.
+ *  Was das Profil nicht sieht (Unterlängen unter 0, Punkte neben Querstrichen), schiebt den Nachbarn nach rechts, bis armGap Luft bleibt. */
 export function spacing(l: Inst, r: Inst, s: Style, minY = 0, lock?: Params): number {
-  const lt = l.def.loose ? instance(l.def, { ...l.def.trimTop!(l.p, -Infinity), ...lock }, s) : l;
-  return gapOffset(lt.prof, r.prof, s.gap + (l.def.adjust?.right ?? 0) + (r.def.adjust?.left ?? 0), minY);
+  const gap = s.gap + (l.def.adjust?.right ?? 0) + (r.def.adjust?.left ?? 0);
+  let dx = gapOffset(l.prof, r.prof, gap, minY);
+  if (l.def.loose) {
+    const d = gapOffset(instance(l.def, { ...l.def.trimTop!(l.p, -Infinity), ...lock }, s).prof, r.prof, gap, minY), t = trimTop(l, 0, r, d, s, lock);
+    if (!collides(t, 0, r, d, s)) return d;
+  }
+  for (let i = 0, g; i < 20 && (g = lightGap(l, 0, r, dx, s.armGap)) < s.armGap - 3; i++) dx += s.armGap - g;
+  return dx;
 }
 
 /** Alle an dieser Grenze möglichen Verbindungen (Balken-Variante kommt in der Engine dazu). */

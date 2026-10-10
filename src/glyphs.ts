@@ -25,7 +25,7 @@ export interface GlyphDef {
   close?(p: Params, x: number): Params; // Bogenende bis x (Strich teilen)
   lift?(p: Params, y: number, s: Style): Params; // linkes Bein: tiefste Tinte bei y (Unterfahren)
   trimTop?(p: Params, end: number): Params; // oberen Arm höchstens bis end
-  loose?: boolean; // der kürzbare obere Strich (f-Haken) zählt beim Abstand nur in seiner kürzesten Form; trimTop kürzt ihn vor dem Nachbarn
+  loose?: boolean; // der kürzbare obere Strich (f-Haken) zählt beim Abstand nur in seiner kürzesten Form; trimTop kürzt ihn vor dem Nachbarn – setzt trimTop voraus
   extend?(p: Params, x: number): Params; // Querstrich bis x (f, t)
   tailTo?(p: Params, x: number): Params; // Schwanz der Unterlänge bis x nach links (g, j, y)
   top?(s: Style): number; // eigene Beschnitt-Oberkante (v, w, x, y: x-Höhe)

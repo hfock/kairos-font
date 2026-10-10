@@ -1,6 +1,8 @@
 import { expect, test } from "bun:test";
 import hagen from "../presets/hagen-aad-fock.json";
 import { joinOptions, layoutLine, type Options, type Pins } from "../src/engine";
+import { GLYPHS } from "../src/glyphs";
+import { lightGap } from "../src/rules";
 import { FLAECHE_1902 } from "../src/style";
 
 const opts = (o: Partial<Options> = {}): Options => ({ style: FLAECHE_1902, interlock: 0.5, targetWidth: null, pins: { letters: {}, joins: {} }, ...o });
@@ -128,6 +130,32 @@ test("Pins: ein gepinnter f-Haken bleibt, wie er ist", () => {
     const r = layoutLine("Pflicht", opts({ pins: { letters: { 1: { hook } }, joins: {} } }));
     expect(r.warnings).toEqual([]);
     expect(r.variants[0].glyphs.find((g) => g.index === 1)!.inst.p.hook).toBe(hook);
+  }
+});
+
+test("f vor jedem Zeichen: ohne Hinweis und ohne Kollision (Haken gekürzt oder voller Abstand)", () => {
+  const bad = Object.keys(GLYPHS).flatMap((c) => {
+    const r = layoutLine("f" + c, opts({ variants: 1 })), [f, o] = r.variants[0].glyphs;
+    const touch = r.variants[0].joins[0].type !== "share" && lightGap(f.inst, f.x, o.inst, o.x, 100) < FLAECHE_1902.armGap - 3; // ff, ft teilen den Querstrich
+    return r.warnings.length || touch ? ["f" + c] : [];
+  });
+  expect(bad).toEqual([]);
+});
+
+test("Kleinbuchstaben untereinander und mit Satzzeichen: ohne Hinweis (keine Kollision, auch nicht mit Unterlängen)", () => {
+  const low = Object.keys(GLYPHS).filter((c) => /\p{Ll}/u.test(c)), marks = [...".,:;!?-–()/&'’\"„“‚‘«»€%@#+=*§…"];
+  const texts = [...low.flatMap((a) => low.map((b) => a + b)), ...low.flatMap((a) => marks.flatMap((m) => [a + m, m + a]))];
+  expect(texts.filter((t) => layoutLine(t, opts({ variants: 1 })).warnings.length)).toEqual([]);
+}, 60000);
+
+test("Unterlänge nach links nie hinter einer Unterlänge (p, q, g, j, y)", () => {
+  for (const a of "pqgjy") for (const b of "gjy") expect([a + b, layoutLine(a + b, opts()).variants[0].joins[0].type]).not.toEqual([a + b, "tail"]);
+});
+
+test("fi, ti, fä: der Querstrich hält armGap Abstand zu den Punkten", () => {
+  for (const t of ["fi", "ti", "fä"]) {
+    const [a, b] = layoutLine(t, opts()).variants[0].glyphs;
+    expect([t, lightGap(a.inst, a.x, b.inst, b.x, 100) >= FLAECHE_1902.armGap]).toEqual([t, true]);
   }
 });
 
