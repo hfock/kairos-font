@@ -94,6 +94,14 @@ test("Kleinbuchstaben bleiben klein, ß bleibt ß, ẞ bleibt ẞ", () => {
   expect(layoutLine("Hagen", opts()).warnings).toEqual([]);
 });
 
+test("alter Pin auf einem Regler, den der Buchstabe nicht hat (h auf Kleinbuchstaben), ändert nichts", () => {
+  // i0 c1 h2 _3 P4 f5 l6 i7 c8 h9 t10: Wortanfang, Buchstabe mitten im Wort, Nachbar mit Arm-Pin
+  const pins = { letters: { 0: { h: 0.8 }, 5: { h: 0.8 }, 6: { top: 300 } }, joins: {} };
+  const free = layoutLine("ich Pflicht", opts()), pinned = layoutLine("ich Pflicht", opts({ pins }));
+  expect(pinned.warnings).toEqual([]);
+  expect(pinned.variants[0].glyphs.map((g) => g.inst.p)).toEqual(free.variants[0].glyphs.map((g) => g.inst.p));
+});
+
 test("unbekannte Zeichen werden zu Platzhaltern", () => {
   const r = layoutLine("~ÜBER", opts());
   expect(r.warnings).toEqual(["Zeichen „~“ noch nicht entworfen"]);

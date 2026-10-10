@@ -18,6 +18,7 @@ export type FontData = {
   kerning: [string, string, number][];
   fea: string;
   expect: Expect[];
+  dropped: string[]; // Abgleich-Folgen, die der Font nicht nachbilden kann (Glyphe ohne Gegenstück)
 };
 
 const NAMES: Record<string, string> = {
@@ -126,8 +127,9 @@ export function fontData(version: string): FontData {
   const top = Math.max(...nests.map((n) => n.p.top));
   const fNest = glyph("F", nests.find((n) => n.p.top === top)!.p);
   for (const n of nests) {
-    const f = n.p.top < top - 0.5 ? trimF(n.p) : fNest;
-    if (f !== fNest) rules.trimX.set(n.x, f);
+    const trimmed = n.p.top < top - 0.5;
+    const f = trimmed ? trimF(n.p) : glyph("F", n.p); // andere Regler als das Regel-F: eigene Glyphe, der Abgleich meldet es laut
+    if (trimmed) rules.trimX.set(n.x, f);
     record("nest", f, n.r, n.dx);
     rules.nestX.set(n.x, n.r);
   }
@@ -182,7 +184,7 @@ export function fontData(version: string): FontData {
     glyphs,
     kerning: [...kern.values()].filter(([, , v]) => v !== 0),
     fea,
-    expect: expectations(reg, fNest, sweep),
+    ...expectations(reg, fNest, sweep),
   };
 }
 
@@ -244,7 +246,7 @@ const TESTS: [string, Record<string, boolean>][] = [
 
 /** Sollwerte: Glyphenfolge und Ursprünge je Wort wie die Engine; bei einem Wort zusätzlich die Striche für den Flächenvergleich.
  *  Dazu der Abgleich (Spec §7.1) über alle Paare und F-Dreierfolgen, ohne Striche; Folgen mit einer Glyphe, die der Font nicht haben kann (?), entfallen. */
-function expectations(reg: Map<string, Glyph>, fNest: Glyph, sweep: string[]): Expect[] {
+function expectations(reg: Map<string, Glyph>, fNest: Glyph, sweep: string[]): Pick<FontData, "expect" | "dropped"> {
   const find = (c: string, p: Params) => {
     const q = c === "F" && p.top < fNest.inst.p.top - 0.5 ? { ...p, top: floor5(p.top) } : p; // gekürzter Arm: abgerundete Variante
     const k = c + JSON.stringify(Object.keys(GLYPHS[c].params).map((x) => Math.round(q[x] * 100) / 100));
@@ -263,6 +265,6 @@ function expectations(reg: Map<string, Glyph>, fNest: Glyph, sweep: string[]): E
     const o0 = gs[0].x - ox(gs[0].inst);
     return { text, features, words, parts: words.length === 1 ? gs.map((g) => part(g.inst, g.x - o0)) : null };
   };
-  const swept = sweep.map((text) => ({ ...entry(text, {}), parts: null })).filter((e) => !e.words.flat().some((g) => g.name.startsWith("?")));
-  return [...TESTS.map(([text, features]) => entry(text, features)), ...swept];
+  const swept = sweep.map((text) => ({ ...entry(text, {}), parts: null })), lost = (e: Expect) => e.words.flat().some((g) => g.name.startsWith("?"));
+  return { expect: [...TESTS.map(([text, features]) => entry(text, features)), ...swept.filter((e) => !lost(e))], dropped: swept.filter(lost).map((e) => e.text) };
 }

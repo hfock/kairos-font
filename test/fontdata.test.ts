@@ -45,6 +45,11 @@ test("Kleinbuchstaben haben eigene Glyphen; Namenszug und Monogramm nur in Versa
   expect(data.fea).toContain("sub F' d by F.nest.t50;");
 });
 
+test("Abgleich verliert nur Folgen, die der Font nicht nachbilden kann", () => {
+  // FF…: ein verschachteltes F verschachtelt nicht noch einmal; F0?, FJ?: das ? kürzt den F-Arm nur um 0,12 (unter der Rundungsgrenze 0,5), der Font setzt F.nest
+  expect(data.dropped.filter((t) => !t.startsWith("FF"))).toEqual(["F0?", "FJ?"]);
+});
+
 test("Sollwerte für Ketten mit Varianten: GLAS, TEAM, OFFEN, AUFTAKT", () => {
   const words = (t: string) => data.expect.find((e) => e.text === t)!.words.map((w) => w.map((g) => g.name).join(" "));
   expect(words("GLAS")).toEqual(["G.term L.foot A.lift S"]); // Endstrich vor einer Fuß-Variante

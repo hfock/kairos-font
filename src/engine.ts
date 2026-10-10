@@ -212,6 +212,13 @@ export function layoutLine(text: string, o: Options): Result {
   const warn = new Set<string>(), s = o.style, count = o.variants ?? 6;
   const ws = words(text, warn);
   if (!ws.length) return { variants: [], warnings: [] };
+  // Pins nur für Regler, die der Buchstabe hat: ein Stand von vor M4 kann h auf einem heute kleinen Buchstaben pinnen
+  const letters: Pins["letters"] = {};
+  for (const l of ws.flat()) {
+    const pin = o.pins.letters[l.index];
+    if (pin) letters[l.index] = Object.fromEntries(Object.entries(pin).filter(([k]) => k in l.def.params));
+  }
+  o = { ...o, pins: { ...o.pins, letters } };
   let combos: { parts: Node[]; score: number; key: string }[] = [{ parts: [], score: 0, key: "" }];
   for (const w of ws) {
     const cands = searchWord(w, o, warn)
